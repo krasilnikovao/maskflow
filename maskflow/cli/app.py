@@ -4,6 +4,8 @@ import typer
 
 from maskflow.audit.json_export import export_audit_trail_json
 from maskflow.audit.models import AuditTrail
+from maskflow.cli.help import LocalizedTyperCommand, LocalizedTyperGroup
+from maskflow.cli.i18n import tr
 from maskflow.core.batch import BatchPipeline
 from maskflow.core.directory import build_directory_tasks
 from maskflow.core.factory import build_engine_bundle_from_config
@@ -16,52 +18,33 @@ from maskflow.utils.logging import configure_logging, get_logger
 logger = get_logger("maskflow.cli")
 
 app = typer.Typer(
-    help="MaskFlow enterprise data masking service",
+    cls=LocalizedTyperGroup,
+    help=tr("app_help"),
     no_args_is_help=True,
+    add_completion=False,
+    context_settings={
+        "help_option_names": ["--help", "-help", "-h", "/?"],
+    },
 )
 
 
-@app.command()
+@app.command(
+    cls=LocalizedTyperCommand,
+    help=tr("mask_help"),
+    epilog=tr("mask_examples"),
+)
 def mask(
-    source: Path = typer.Argument(..., help="Source file"),
-    destination: Path = typer.Argument(..., help="Destination file"),
-    config: Path = typer.Option(
-        Path("configs/default.yaml"),
-        "--config",
-        "-c",
-        help="Path to YAML config",
-    ),
-    log_level: str = typer.Option(
-        "INFO",
-        "--log-level",
-        help="Logging level",
-    ),
-    json_logs: bool = typer.Option(
-        False,
-        "--json-logs",
-        help="Enable JSON logs",
-    ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Analyze file without writing output",
-    ),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="Overwrite destination file if it already exists",
-    ),
-    plugins_dir: Path | None = typer.Option(
-        None,
-        "--plugins-dir",
-        help="Directory with external plugins",
-    ),
-    audit_report: Path | None = typer.Option(
-        None,
-        "--audit-report",
-        help="Write JSON audit trail report",
-    ),
+    source: Path = typer.Argument(..., metavar="SOURCE", help=tr("source_file")),
+    destination: Path = typer.Argument(..., metavar="DESTINATION", help=tr("destination_file")),
+    config: Path = typer.Option(Path("configs/default.yaml"), "--config", "-c", help=tr("config")),
+    log_level: str = typer.Option("INFO", "--log-level", help=tr("log_level")),
+    json_logs: bool = typer.Option(False, "--json-logs", help=tr("json_logs")),
+    dry_run: bool = typer.Option(False, "--dry-run", help=tr("dry_run")),
+    overwrite: bool = typer.Option(False, "--overwrite", help=tr("overwrite")),
+    plugins_dir: Path | None = typer.Option(None, "--plugins-dir", help=tr("plugins_dir")),
+    audit_report: Path | None = typer.Option(None, "--audit-report", help=tr("audit_report")),
 ) -> None:
+
     configure_logging(
         level=log_level,
         json_logs=json_logs,
@@ -137,53 +120,27 @@ def mask(
     typer.echo(f"Masked file written to: {destination}")
 
 
-@app.command("mask-dir")
+@app.command(
+    "mask-dir",
+    cls=LocalizedTyperCommand,
+    help=tr("mask_dir_help"),
+    epilog=tr("mask_dir_examples"),
+)
 def mask_dir(
-    source_dir: Path = typer.Argument(..., help="Source directory"),
-    destination_dir: Path = typer.Argument(..., help="Destination directory"),
-    config: Path = typer.Option(
-        Path("configs/default.yaml"),
-        "--config",
-        "-c",
-        help="Path to YAML config",
+    source_dir: Path = typer.Argument(..., metavar="SOURCE_DIR", help=tr("source_dir")),
+    destination_dir: Path = typer.Argument(
+        ..., metavar="DESTINATION_DIR", help=tr("destination_dir")
     ),
-    workers: int | None = typer.Option(
-        None,
-        "--workers",
-        "-w",
-        help="Number of parallel workers. Overrides config runtime_limits.max_workers",
-    ),
-    log_level: str = typer.Option(
-        "INFO",
-        "--log-level",
-        help="Logging level",
-    ),
-    json_logs: bool = typer.Option(
-        False,
-        "--json-logs",
-        help="Enable JSON logs",
-    ),
-    overwrite: bool = typer.Option(
-        False,
-        "--overwrite",
-        help="Overwrite destination files if they already exist",
-    ),
-    report_path: Path | None = typer.Option(
-        None,
-        "--report",
-        help="Write JSON processing report",
-    ),
-    plugins_dir: Path | None = typer.Option(
-        None,
-        "--plugins-dir",
-        help="Directory with external plugins",
-    ),
-    audit_report: Path | None = typer.Option(
-        None,
-        "--audit-report",
-        help="Write JSON audit trail report",
-    ),
+    config: Path = typer.Option(Path("configs/default.yaml"), "--config", "-c", help=tr("config")),
+    workers: int | None = typer.Option(None, "--workers", "-w", help=tr("workers")),
+    log_level: str = typer.Option("INFO", "--log-level", help=tr("log_level")),
+    json_logs: bool = typer.Option(False, "--json-logs", help=tr("json_logs")),
+    overwrite: bool = typer.Option(False, "--overwrite", help=tr("overwrite")),
+    report_path: Path | None = typer.Option(None, "--report", help=tr("report")),
+    plugins_dir: Path | None = typer.Option(None, "--plugins-dir", help=tr("plugins_dir")),
+    audit_report: Path | None = typer.Option(None, "--audit-report", help=tr("audit_report")),
 ) -> None:
+
     configure_logging(
         level=log_level,
         json_logs=json_logs,
