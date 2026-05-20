@@ -24,12 +24,12 @@ MaskFlow не использует облачные сервисы, внешни
 
 ## Безопасность
 
-- Полностью offline-first архитектура;
+- полностью офлайн архитектура;
 - отсутствие внешних API;
 - отсутствие телеметрии;
 - локальная обработка данных;
 - поддержка детерминированного маскирования;
-- поддержка reversible mapping с шифрованием;
+- поддержка обратного демаскирования с шифрованием;
 - безопасная обработка regex;
 - таймауты выполнения;
 - отсутствие логирования исходных значений.
@@ -66,20 +66,20 @@ MaskFlow не использует облачные сервисы, внешни
 
 ## Режимы маскирования
 
-- Полное обезличивание;
-- Псевдонимизация;
-- Частичное маскирование;
-- Детерминированное HMAC-маскирование;
-- Сохранение формата значений.
+- полное обезличивание;
+- псевдонимизация;
+- частичное маскирование;
+- детерминированное HMAC-маскирование;
+- сохранение формата значений.
 
 ## Архитектурные особенности
 
-- Streaming processing;
+- потоковый процессинг;
 - параллельная обработка;
 - модульная архитектура;
-- plugin system;
+- система плагинов;
 - безопасные regex;
-- Unicode/cyrillic aware;
+- поддержка юникода и кириллицы;
 - поддержка UTF-8 и Windows-1251.
 
 ---
@@ -129,7 +129,7 @@ maskflow/
 
 Поддерживается:
 
-- Windows 11;
+- Windows 10/11;
 - PowerShell 7+.
 
 ## Python
@@ -147,13 +147,68 @@ Python >= 3.12
 ## 1. Клонирование репозитория
 
 ```bash
-git clone <repository>
+git clone git@github.com:krasilnikovao/maskflow.git
 cd maskflow
 ```
 
 ---
 
-## 2. Создание virtualenv
+# Автоматическое развертывание
+
+Проект включает bootstrap-скрипты для автоматической подготовки окружения.
+
+Bootstrap выполняет:
+
+- создание virtualenv;
+- обновление pip/setuptools/wheel;
+- установку зависимостей;
+- установку проекта в editable mode;
+- установку dev-зависимостей;
+- подготовку каталогов проекта;
+- проверку окружения.
+
+## Linux
+
+```bash
+./scripts/bootstrap.sh
+```
+
+Если требуется:
+
+```bash
+chmod +x ./scripts/bootstrap.sh
+./scripts/bootstrap.sh
+```
+
+---
+
+## Windows PowerShell
+
+```powershell
+./scripts/bootstrap.ps1
+```
+
+Если execution policy блокирует запуск:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+./scripts/bootstrap.ps1
+```
+
+---
+
+# Ручное развертывание
+
+Ручная установка рекомендуется только для:
+
+- разработки bootstrap-скриптов;
+- debugging;
+- кастомных CI/CD pipelines;
+- нестандартных окружений.
+
+---
+
+## 1. Создание virtualenv
 
 ### Linux
 
@@ -171,7 +226,7 @@ python -m venv .venv
 
 ---
 
-## 3. Установка проекта
+## 2. Установка проекта
 
 ### Базовая установка
 
@@ -850,7 +905,7 @@ Python >= 3.12
 Supported operating systems:
 
 - Linux;
-- Windows 11.
+- Windows 10/11.
 
 ---
 
@@ -859,9 +914,64 @@ Supported operating systems:
 ## Clone Repository
 
 ```bash
-git clone <repository>
+git clone git@github.com:krasilnikovao/maskflow.git
 cd maskflow
 ```
+
+---
+
+# Automatic Bootstrap
+
+The project includes bootstrap scripts for automatic environment preparation.
+
+Bootstrap scripts perform:
+
+- virtualenv creation;
+- pip/setuptools/wheel upgrade;
+- dependency installation;
+- editable project installation;
+- development dependency installation;
+- project directory initialization;
+- environment validation.
+
+## Linux
+
+```bash
+./scripts/bootstrap.sh
+```
+
+If required:
+
+```bash
+chmod +x ./scripts/bootstrap.sh
+./scripts/bootstrap.sh
+```
+
+---
+
+## Windows PowerShell
+
+```powershell
+./scripts/bootstrap.ps1
+```
+
+If PowerShell blocks execution:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+./scripts/bootstrap.ps1
+```
+
+---
+
+# Manual Deployment
+
+Manual installation is recommended only for:
+
+- bootstrap development;
+- debugging;
+- custom CI/CD pipelines;
+- non-standard environments.
 
 ---
 
