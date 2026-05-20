@@ -1,0 +1,42 @@
+pipeline:
+  # ВНИМАНИЕ: для production задавайте секрет через переменную окружения
+  # MASKFLOW_SECRET — она перекроет это значение. Здесь явное значение оставлено
+  # пустым специально, чтобы загрузчик упал, если ENV не задан.
+  deterministic_secret: "set-via-MASKFLOW_SECRET"
+
+rules:
+  email:
+    enabled: true
+    mode: hmac
+    prefix: EMAIL
+
+  phone:
+    enabled: true
+    mode: hmac
+    prefix: PHONE
+
+  inn:
+    enabled: true
+    mode: hmac
+    prefix: INN
+
+  guid:
+    enabled: true
+    mode: hmac
+    prefix: GUID
+
+field_rules: {}
+
+runtime_limits:
+  regex_timeout_seconds: 5
+  file_timeout_seconds: 300
+  max_workers: 4
+
+cache:
+  enabled: true
+  path: ".maskflow/entity-cache.json"
+
+reversible_mapping:
+  enabled: false
+  path: ".maskflow/reversible-map.bin"
+  encryption_key_env: "MASKFLOW_REVERSIBLE_KEY"
