@@ -48,6 +48,9 @@ class HmacMasker(BaseMasker):
             cached = self._cache.get(cache_key)
 
             if cached is not None:
+                if self._reversible_mapping is not None:
+                    self._reversible_mapping.set(cached, value)
+
                 return cached
 
         masked = f"{self._prefix}_{digest[: self._hash_length]}"

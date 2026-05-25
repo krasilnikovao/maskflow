@@ -42,3 +42,23 @@ class MaskFileResponse(BaseModel):
     matches_skipped: int
     download_url: str
     report_url: str
+
+
+class DemaskTextRequest(BaseModel):
+    text: str = Field(min_length=1)
+    config_path: Path | None = None
+
+
+class DemaskTextResponse(BaseModel):
+    demasked_text: str
+    replacements: int
+    mapping_size: int
+
+
+class DemaskFileResponse(BaseModel):
+    job_id: str
+    original_name: str
+    output_name: str
+    replacements: int
+    mapping_size: int
+    download_url: str

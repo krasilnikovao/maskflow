@@ -74,6 +74,10 @@ main {
   gap: 16px;
 }
 
+.section-gap {
+  margin-top: 16px;
+}
+
 .mask-form {
   display: grid;
   gap: 10px;

@@ -12,6 +12,7 @@ from maskflow.core.directory import SUPPORTED_EXTENSIONS
 from maskflow.plugins.builtin import build_builtin_plugin_registry
 from maskflow.runtime.paths import RuntimePaths
 from maskflow.runtime.settings import get_settings
+from maskflow.services.demasking import DemaskingService
 from maskflow.services.file_jobs import FileMaskingJobService
 from maskflow.services.text_masking import TextMaskingService
 
@@ -74,6 +75,28 @@ async def web_mask_text(request: Request) -> HTMLResponse:
     return HTMLResponse(escape(result.masked_text))
 
 
+@router.post("/web/demask-text", response_class=HTMLResponse)
+async def web_demask_text(request: Request) -> HTMLResponse:
+    payload = parse_qs((await request.body()).decode("utf-8"))
+    text = payload.get("text", [""])[0]
+
+    if not text:
+        return HTMLResponse('<span class="error">Text is required</span>', status_code=400)
+
+    try:
+        demasked, _ = DemaskingService().demask_text(
+            text=text,
+            config_path=get_settings().default_config,
+        )
+    except ValueError as error:
+        return HTMLResponse(
+            f'<span class="error">{escape(str(error))}</span>',
+            status_code=400,
+        )
+
+    return HTMLResponse(escape(demasked))
+
+
 @router.post("/web/mask-file", response_class=HTMLResponse)
 async def web_mask_file(request: Request) -> HTMLResponse:
     form = await request.form()
@@ -117,6 +140,53 @@ async def web_mask_file(request: Request) -> HTMLResponse:
                 "</dl>",
                 f'<a class="button-link" href="{download_url}">Download Masked File</a>',
                 f'<a class="secondary-link" href="{report_url}">Report JSON</a>',
+                "</div>",
+            ],
+        )
+    )
+
+
+@router.post("/web/demask-file", response_class=HTMLResponse)
+async def web_demask_file(request: Request) -> HTMLResponse:
+    form = await request.form()
+    uploaded = form.get("file")
+
+    if not isinstance(uploaded, StarletteUploadFile):
+        return HTMLResponse('<span class="error">File is required</span>', status_code=400)
+
+    service = FileMaskingJobService()
+
+    try:
+        source_path = service.save_upload(
+            filename=uploaded.filename or "",
+            stream=uploaded.file,
+        )
+        result = service.demask_file(
+            source_path=source_path,
+            original_name=uploaded.filename or "",
+            config_path=get_settings().default_config,
+        )
+    except ValueError as error:
+        return HTMLResponse(
+            f'<span class="error">{escape(str(error))}</span>',
+            status_code=400,
+        )
+
+    output_name = escape(result.output_path.name)
+    download_url = (
+        f"/downloads/jobs/{quote(result.job_id)}/{quote(result.output_path.name)}"
+    )
+
+    return HTMLResponse(
+        "\n".join(
+            [
+                '<div class="job-result">',
+                f"<strong>{output_name}</strong>",
+                "<dl>",
+                f"<div><dt>Replacements</dt><dd>{result.replacements}</dd></div>",
+                f"<div><dt>Mapping Size</dt><dd>{result.mapping_size}</dd></div>",
+                "</dl>",
+                f'<a class="button-link" href="{download_url}">Download Demasked File</a>',
                 "</div>",
             ],
         )

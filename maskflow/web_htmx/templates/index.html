@@ -1,6 +1,6 @@
 <section class="split">
   <article class="panel">
-    <h1>Text</h1>
+    <h1>Mask Text</h1>
     <form
       class="mask-form"
       data-ajax-form
@@ -16,7 +16,7 @@
   </article>
 
   <article class="panel">
-    <h1>File</h1>
+    <h1>Mask File</h1>
     <form
       class="mask-form"
       data-ajax-form
@@ -30,5 +30,40 @@
       <button type="submit">Mask File</button>
     </form>
     <div id="file-result" class="result"></div>
+  </article>
+</section>
+
+<section class="split section-gap">
+  <article class="panel">
+    <h1>Demask Text</h1>
+    <form
+      class="mask-form"
+      data-ajax-form
+      data-target="#demask-result"
+      action="/web/demask-text"
+      method="post"
+    >
+      <label for="demask-text">Masked Text</label>
+      <textarea id="demask-text" name="text" rows="12" placeholder="Paste reversible masked text"></textarea>
+      <button type="submit">Demask Text</button>
+    </form>
+    <pre id="demask-result" class="result"></pre>
+  </article>
+
+  <article class="panel">
+    <h1>Demask File</h1>
+    <form
+      class="mask-form"
+      data-ajax-form
+      data-target="#demask-file-result"
+      action="/web/demask-file"
+      method="post"
+      enctype="multipart/form-data"
+    >
+      <label for="demask-file">Supported: $supported_extensions</label>
+      <input id="demask-file" name="file" type="file" accept=".csv,.docx,.json,.sql,.txt,.xlsx,.xml">
+      <button type="submit">Demask File</button>
+    </form>
+    <div id="demask-file-result" class="result"></div>
   </article>
 </section>

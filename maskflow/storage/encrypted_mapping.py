@@ -43,6 +43,9 @@ class EncryptedMappingStore:
     def set(self, key: str, value: str) -> None:
         self._values[key] = value
 
+    def all(self) -> dict[str, str]:
+        return self._values.copy()
+
     def save(self) -> None:
         """Atomic write + cross-process merge to avoid last-writer-wins."""
         lock_path = self.path.with_suffix(self.path.suffix + ".lock")

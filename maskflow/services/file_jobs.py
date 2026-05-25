@@ -9,6 +9,7 @@ from maskflow.core.directory import SUPPORTED_EXTENSIONS
 from maskflow.reports.json_report import export_batch_report_json
 from maskflow.reports.models import AggregateStatistics, BatchProcessingReport, FileProcessingReport
 from maskflow.runtime.paths import RuntimePaths, get_runtime_paths
+from maskflow.services.demasking import DemaskingService
 from maskflow.services.file_masking import FileMaskingService
 
 _SAFE_FILENAME_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
@@ -22,6 +23,16 @@ class FileMaskingJobResult:
     output_path: Path
     report_path: Path
     report: FileProcessingReport
+
+
+@dataclass(frozen=True, slots=True)
+class FileDemaskingJobResult:
+    job_id: str
+    original_name: str
+    source_path: Path
+    output_path: Path
+    replacements: int
+    mapping_size: int
 
 
 class FileMaskingJobService:
@@ -105,6 +116,43 @@ class FileMaskingJobService:
             report=report,
         )
 
+    def demask_file(
+        self,
+        source_path: Path,
+        original_name: str,
+        config_path: Path,
+    ) -> FileDemaskingJobResult:
+        safe_name = sanitize_filename(original_name)
+        ensure_supported_extension(safe_name)
+
+        self.paths.ensure_directories()
+        job_id = uuid.uuid4().hex
+        job_dir = self.paths.jobs_dir / job_id
+        input_dir = job_dir / "input"
+        output_dir = job_dir / "output"
+        input_dir.mkdir(parents=True, exist_ok=False)
+        output_dir.mkdir(parents=True, exist_ok=False)
+
+        persisted_source = input_dir / safe_name
+        if source_path.resolve() != persisted_source.resolve():
+            shutil.copy2(source_path, persisted_source)
+
+        output_path = output_dir / build_demasked_filename(safe_name)
+        result = DemaskingService().demask_file(
+            source=persisted_source,
+            destination=output_path,
+            config_path=config_path,
+        )
+
+        return FileDemaskingJobResult(
+            job_id=job_id,
+            original_name=safe_name,
+            source_path=persisted_source,
+            output_path=output_path,
+            replacements=result.replacements,
+            mapping_size=result.mapping_size,
+        )
+
 
 def sanitize_filename(filename: str) -> str:
     name = Path(filename).name.strip()
@@ -128,3 +176,8 @@ def ensure_supported_extension(filename: str) -> None:
 def build_masked_filename(filename: str) -> str:
     path = Path(filename)
     return f"{path.stem}.masked{path.suffix.lower()}"
+
+
+def build_demasked_filename(filename: str) -> str:
+    path = Path(filename)
+    return f"{path.stem}.demasked{path.suffix.lower()}"

@@ -37,6 +37,6 @@ cache:
   path: "cache/entity-cache.json"
 
 reversible_mapping:
-  enabled: false
+  enabled: true
   path: "reversible/reversible-map.bin"
   encryption_key_env: "MASKFLOW_REVERSIBLE_KEY"
