@@ -18,4 +18,6 @@ GUID_REGEX = regex.compile(
 
 class GuidDetector(RegexDetector):
     name = "guid"
-    pattern = GUID_REGEX
+
+    def __init__(self) -> None:
+        super().__init__(GUID_REGEX)

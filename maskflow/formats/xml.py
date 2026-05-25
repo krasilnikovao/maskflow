@@ -1,3 +1,5 @@
+from collections import Counter
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from lxml import etree  # type: ignore[import-untyped]
@@ -24,6 +26,15 @@ def _local_name(tag: str) -> str:
     return tag
 
 
+@dataclass(slots=True)
+class _XmlStats:
+    matches_found: int = 0
+    matches_applied: int = 0
+    matches_skipped: int = 0
+    detector_counts: Counter[str] = field(default_factory=Counter)
+    detector_timings_ms: Counter[str] = field(default_factory=Counter)
+
+
 class XmlProcessor:
     def __init__(
         self,
@@ -45,7 +56,35 @@ class XmlProcessor:
                 source=source,
                 destination=temp_path,
                 encoding=encoding,
+                stats=None,
             ),
+        )
+
+    def process_with_stats(
+        self,
+        source: Path,
+        destination: Path,
+        encoding: str = "utf-8",
+    ) -> AnalysisResult:
+        """FIX 1.2: единый проход — маскируем и собираем статистику."""
+        stats = _XmlStats()
+
+        atomic_write_binary_via_temp(
+            destination=destination,
+            writer=lambda temp_path: self._write_masked_xml(
+                source=source,
+                destination=temp_path,
+                encoding=encoding,
+                stats=stats,
+            ),
+        )
+
+        return AnalysisResult(
+            matches_found=stats.matches_found,
+            matches_applied=stats.matches_applied,
+            matches_skipped=stats.matches_skipped,
+            detector_counts=dict(stats.detector_counts),
+            detector_timings_ms=dict(stats.detector_timings_ms),
         )
 
     def analyze(
@@ -67,8 +106,10 @@ class XmlProcessor:
             if element.text:
                 values.append(element.text)
 
-            # element.tail intentionally skipped — it is pretty-print whitespace,
-            # not a field value.
+            # FIX 2.4: обрабатываем tail если он содержит не-пробельный текст
+            if element.tail and element.tail.strip():
+                values.append(element.tail)
+
             values.extend(element.attrib.values())
 
             for value in values:
@@ -92,9 +133,31 @@ class XmlProcessor:
             detector_timings_ms=detector_timings_ms,
         )
 
-    def _process_text_field(self, field_name: str, value: str) -> str | None:
+    def _mask_field(
+        self,
+        field_name: str,
+        value: str,
+        stats: _XmlStats | None,
+    ) -> str | None:
+        """Маскирует значение с учётом field_engine и накоплением статистики."""
         if self.field_engine is not None:
-            return self.field_engine.process_field(field_name=field_name, value=value)
+            rule = self.field_engine.rules.get(field_name.lower())
+            if rule is not None:
+                if rule.action == "remove":
+                    return None
+                if rule.action == "replace":
+                    return rule.replacement or ""
+                # action == "mask" — продолжаем
+
+        if stats is not None:
+            masked, analysis = self.engine.process_with_stats(value)
+            stats.matches_found += analysis.matches_found
+            stats.matches_applied += analysis.matches_applied
+            stats.matches_skipped += analysis.matches_skipped
+            stats.detector_counts.update(analysis.detector_counts)
+            stats.detector_timings_ms.update(analysis.detector_timings_ms)
+            return masked
+
         return self.engine.process_text(value)
 
     def _write_masked_xml(
@@ -102,6 +165,7 @@ class XmlProcessor:
         source: Path,
         destination: Path,
         encoding: str,
+        stats: _XmlStats | None,
     ) -> None:
         tree = etree.parse(str(source), parser=_safe_parser())
         root = tree.getroot()
@@ -110,13 +174,27 @@ class XmlProcessor:
             element_name = _local_name(element.tag) if isinstance(element.tag, str) else ""
 
             if element.text:
-                processed = self._process_text_field(element_name, element.text)
+                processed = self._mask_field(element_name, element.text, stats)
                 element.text = processed if processed is not None else ""
+
+            # FIX 2.4: маскируем tail если он содержит реальный текст
+            if element.tail and element.tail.strip():
+                parent = element.getparent()
+                parent_name = (
+                    _local_name(parent.tag)
+                    if parent is not None and isinstance(parent.tag, str)
+                    else ""
+                )
+                processed_tail = self._mask_field(parent_name, element.tail, stats)
+                if processed_tail is not None:
+                    element.tail = processed_tail
+                # Если processed_tail is None (remove) — оставляем tail как есть,
+                # т.к. удаление tail разрушит XML-структуру.
 
             for key in list(element.attrib.keys()):
                 attribute_name = _local_name(key)
                 value = element.attrib[key]
-                processed_value = self._process_text_field(attribute_name, value)
+                processed_value = self._mask_field(attribute_name, value, stats)
 
                 if processed_value is None:
                     del element.attrib[key]

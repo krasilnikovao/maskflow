@@ -12,6 +12,12 @@ from pathlib import Path
 from types import TracebackType
 from typing import IO
 
+# Windows msvcrt.locking требует явного числа байт для блокировки.
+# Значение 1 байт исторически использовалось как символическое, но создаёт
+# риск: два процесса могут одновременно получить блокировку разных байт.
+# 64 KB — достаточно, чтобы гарантированно перекрыть любой реальный lock-файл.
+_WIN_LOCK_SIZE = 64 * 1024
+
 
 class FileLock:
     def __init__(self, path: Path, timeout: float = 30.0, poll_interval: float = 0.05) -> None:
@@ -65,12 +71,13 @@ if sys.platform == "win32":
     import msvcrt
 
     def _do_lock(handle: IO[bytes]) -> None:
-        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, _WIN_LOCK_SIZE)
 
     def _do_unlock(handle: IO[bytes]) -> None:
         handle.seek(0)
         try:
-            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, _WIN_LOCK_SIZE)
         except OSError:
             pass
 else:

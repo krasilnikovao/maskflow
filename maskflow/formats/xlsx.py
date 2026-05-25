@@ -1,4 +1,5 @@
 from collections import Counter
+from pathlib import Path
 
 from openpyxl import load_workbook  # type: ignore[import-untyped]
 from openpyxl.worksheet.worksheet import Worksheet  # type: ignore[import-untyped]
@@ -11,8 +12,8 @@ class XlsxProcessor:
     def __init__(self, engine: MaskingEngine) -> None:
         self.engine = engine
 
-    def analyze(self, source: str) -> AnalysisResult:
-        workbook = load_workbook(source)
+    def analyze(self, source: Path | str) -> AnalysisResult:
+        workbook = load_workbook(str(source))
 
         total_matches_found = 0
         total_matches_applied = 0
@@ -48,8 +49,8 @@ class XlsxProcessor:
             detector_timings_ms=dict(detector_timings_ms),
         )
 
-    def process(self, source: str, destination: str) -> None:
-        workbook = load_workbook(source)
+    def process(self, source: Path | str, destination: Path | str) -> None:
+        workbook = load_workbook(str(source))
 
         for sheet in workbook.worksheets:
             if not isinstance(sheet, Worksheet):
@@ -65,4 +66,4 @@ class XlsxProcessor:
 
                     cell.value = self.engine.process_text(cell.value)
 
-        workbook.save(destination)
+        workbook.save(str(destination))

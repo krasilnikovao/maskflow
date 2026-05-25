@@ -43,7 +43,9 @@ def is_valid_inn(value: str) -> bool:
 
 class InnDetector(RegexDetector):
     name = "inn"
-    pattern = INN_REGEX
+
+    def __init__(self) -> None:
+        super().__init__(INN_REGEX)
 
     def detect(self, text: str) -> Iterable[Match]:
         for match in super().detect(text):

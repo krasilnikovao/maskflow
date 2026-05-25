@@ -12,16 +12,28 @@ from maskflow.security.regex_policy import (
 
 
 class RegexDetector(BaseDetector):
-    pattern: regex.Pattern[str]
-    timeout_seconds: float = DEFAULT_REGEX_TIMEOUT_SECONDS
+    """Base class for regex-driven detectors.
+
+    Subclasses must:
+    - Declare ``name: ClassVar[str]`` at class level.
+    - Call ``super().__init__(pattern)`` (optionally passing ``timeout_seconds``).
+
+    Marked as an intermediate abstract base so ``BaseDetector.__init_subclass__``
+    does not enforce the ``name`` requirement on this class itself.
+    """
+
+    _abstract_base = True
+
+    def __init__(
+        self,
+        pattern: regex.Pattern[str],
+        timeout_seconds: float = DEFAULT_REGEX_TIMEOUT_SECONDS,
+    ) -> None:
+        self._pattern: regex.Pattern[str] = pattern
+        self._timeout: float = validate_regex_timeout(timeout_seconds)
 
     def detect(self, text: str) -> Iterable[Match]:
-        timeout_seconds = validate_regex_timeout(self.timeout_seconds)
-
-        for match in self.pattern.finditer(
-            text,
-            timeout=timeout_seconds,
-        ):
+        for match in self._pattern.finditer(text, timeout=self._timeout):
             yield Match(
                 detector=self.name,
                 start=match.start(),
@@ -30,6 +42,7 @@ class RegexDetector(BaseDetector):
             )
 
     def with_timeout(self, timeout_seconds: float) -> "RegexDetector":
+        """Return a shallow copy of this detector with a different timeout."""
         clone = copy.copy(self)
-        clone.timeout_seconds = validate_regex_timeout(timeout_seconds)
+        clone._timeout = validate_regex_timeout(timeout_seconds)
         return clone

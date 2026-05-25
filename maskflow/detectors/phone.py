@@ -22,4 +22,6 @@ PHONE_REGEX = regex.compile(
 
 class PhoneDetector(RegexDetector):
     name = "phone"
-    pattern = PHONE_REGEX
+
+    def __init__(self) -> None:
+        super().__init__(PHONE_REGEX)

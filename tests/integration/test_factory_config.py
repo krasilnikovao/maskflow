@@ -79,7 +79,14 @@ rules:
         build_engine_bundle_from_config(config)
 
 
-def test_factory_rejects_unsupported_masking_mode(tmp_path: Path) -> None:
+def test_factory_rejects_unimplemented_masking_mode(tmp_path: Path) -> None:
+    """Modes that are valid in the config schema but not yet implemented
+    must raise NotImplementedError at engine-build time, not at load time.
+
+    'partial' is a recognised MaskingMode literal so Pydantic accepts the
+    config; but no masker implementation exists for it yet, so the factory
+    should raise NotImplementedError.
+    """
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         """
@@ -89,7 +96,7 @@ pipeline:
 rules:
   email:
     enabled: true
-    mode: unsupported
+    mode: partial
     prefix: EMAIL
 """,
         encoding="utf-8",
@@ -97,5 +104,5 @@ rules:
 
     config = RulesLoader.load(config_path)
 
-    with pytest.raises(ValueError, match="Unsupported masking mode: unsupported"):
+    with pytest.raises(NotImplementedError, match="partial"):
         build_engine_bundle_from_config(config)

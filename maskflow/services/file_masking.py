@@ -133,9 +133,9 @@ class FileMaskingService:
             csv_processor = CsvProcessor(engine=engine, field_engine=field_engine)
 
             def run_csv(source: Path, destination: Path) -> AnalysisResult:
-                analysis = csv_processor.analyze(source)
-                csv_processor.process(source=source, destination=destination)
-                return analysis
+                # Single-pass: process_with_stats маскирует и собирает статистику
+                # за один проход вместо двух отдельных analyze() + process().
+                return csv_processor.process_with_stats(source, destination)
 
             return _FormatHandler(needs_atomic=False, run=run_csv)
 
@@ -143,9 +143,8 @@ class FileMaskingService:
             xml_processor = XmlProcessor(engine=engine, field_engine=field_engine)
 
             def run_xml(source: Path, destination: Path) -> AnalysisResult:
-                analysis = xml_processor.analyze(source)
-                xml_processor.process(source=source, destination=destination)
-                return analysis
+                # Single-pass: process_with_stats вместо analyze() + process().
+                return xml_processor.process_with_stats(source, destination)
 
             return _FormatHandler(needs_atomic=False, run=run_xml)
 
@@ -153,9 +152,8 @@ class FileMaskingService:
             json_processor = JsonProcessor(engine=engine, field_engine=field_engine)
 
             def run_json(source: Path, destination: Path) -> AnalysisResult:
-                analysis = json_processor.analyze(source)
-                json_processor.process(source=source, destination=destination)
-                return analysis
+                # Single-pass: process_with_stats вместо analyze() + process().
+                return json_processor.process_with_stats(source, destination)
 
             return _FormatHandler(needs_atomic=False, run=run_json)
 
@@ -176,12 +174,10 @@ class FileMaskingService:
             xlsx_processor = XlsxProcessor(engine)
 
             def run_xlsx(source: Path, destination: Path) -> AnalysisResult:
-                analysis = xlsx_processor.analyze(str(source))
+                analysis = xlsx_processor.analyze(source)
                 atomic_write_binary_via_temp(
                     destination=destination,
-                    writer=lambda temp_path: xlsx_processor.process(
-                        str(source), str(temp_path)
-                    ),
+                    writer=lambda temp_path: xlsx_processor.process(source, temp_path),
                 )
                 return analysis
 

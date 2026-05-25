@@ -6,6 +6,10 @@ _StrictModel = ConfigDict(extra="forbid")
 
 FieldAction = Literal["mask", "remove", "replace"]
 
+# All supported masking modes. Adding a new mode here requires a corresponding
+# implementation in maskflow/core/factory.py.
+MaskingMode = Literal["hmac", "partial", "preserve_format", "redact"]
+
 
 class PipelineConfig(BaseModel):
     model_config = _StrictModel
@@ -15,10 +19,9 @@ class PipelineConfig(BaseModel):
 class RuleConfig(BaseModel):
     model_config = _StrictModel
     enabled: bool = True
-    # mode is a free string: business validation is delegated to the factory,
-    # which knows which modes are actually supported.
-    mode: str = "hmac"
-    prefix: str
+    mode: MaskingMode = "hmac"
+    # prefix defaults to "" — factory derives it from the rule name when empty.
+    prefix: str = ""
 
 
 class FieldRuleConfig(BaseModel):

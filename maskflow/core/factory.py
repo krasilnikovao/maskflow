@@ -7,9 +7,13 @@ from maskflow.detectors.regex_base import RegexDetector
 from maskflow.plugins.builtin import build_builtin_plugin_registry
 from maskflow.plugins.loader import load_external_plugins
 from maskflow.plugins.registry import PluginRegistry
-from maskflow.rules.models import AppConfig
+from maskflow.rules.models import AppConfig, MaskingMode
 from maskflow.storage.encrypted_mapping import EncryptedMappingStore
 from maskflow.storage.entity_cache import EntityCache
+
+# Modes that have a complete masker implementation. Other MaskingMode values are
+# recognised by the type system but raise NotImplementedError until implemented.
+_IMPLEMENTED_MODES: frozenset[MaskingMode] = frozenset({"hmac"})
 
 
 def build_engine_bundle_from_config(
@@ -56,14 +60,21 @@ def build_engine_bundle_from_config(
 
         runtime_registry.register_detector(detector)
 
-        if rule.mode != "hmac":
-            raise ValueError(f"Unsupported masking mode: {rule.mode}")
+        if rule.mode not in _IMPLEMENTED_MODES:
+            raise NotImplementedError(
+                f"Masking mode '{rule.mode}' is defined but not yet implemented. "
+                f"Currently supported modes: {sorted(_IMPLEMENTED_MODES)}"
+            )
+
+        # Derive prefix from config; fall back to the upper-cased rule name so
+        # callers do not need to repeat the rule name in every config file.
+        effective_prefix = rule.prefix or rule_name.upper()
 
         runtime_registry.register_masker(
             detector_name=rule_name,
             masker=plugin.masker_factory(
                 config.pipeline.deterministic_secret,
-                rule.prefix,
+                effective_prefix,
                 entity_cache,
                 reversible_mapping,
             ),

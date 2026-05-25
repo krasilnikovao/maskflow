@@ -2,15 +2,30 @@ import time
 from collections import Counter
 from collections.abc import Iterable
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
 
+from maskflow.core.bundle import EngineBundle
+from maskflow.core.factory import build_engine_bundle_from_config
 from maskflow.core.tasks import FileTask
 from maskflow.reports.models import (
     AggregateStatistics,
     BatchProcessingReport,
     FileProcessingReport,
 )
+from maskflow.rules.loader import RulesLoader
 from maskflow.services.file_masking import FileMaskingService
 from maskflow.utils.timeout import OperationTimeoutError, run_with_timeout
+
+# FIX 3.2: кэш конфига на уровне процесса — не читать YAML для каждого файла
+_bundle_cache: dict[Path, EngineBundle] = {}
+
+
+def _get_or_build_bundle(config_path: Path) -> EngineBundle:
+    """Возвращает EngineBundle из кэша или строит его из конфига."""
+    if config_path not in _bundle_cache:
+        config = RulesLoader.load(config_path)
+        _bundle_cache[config_path] = build_engine_bundle_from_config(config)
+    return _bundle_cache[config_path]
 
 
 def process_file_task(task: FileTask) -> FileProcessingReport:
@@ -31,12 +46,14 @@ def process_file_task(task: FileTask) -> FileProcessingReport:
         )
 
     except OperationTimeoutError as error:
+        # FIX 1.8: timed_out=True вместо message.startswith("OperationTimeoutError")
         return FileProcessingReport(
             source=task.source,
             destination=task.destination,
             success=False,
             message=f"OperationTimeoutError: {error}",
             duration_ms=int((time.perf_counter() - started_at) * 1000),
+            timed_out=True,
         )
 
     except Exception as error:
@@ -96,9 +113,8 @@ class BatchPipeline:
             total_matches_skipped += report.matches_skipped
             detector_totals.update(report.detector_counts)
 
-        timeout_count = sum(
-            1 for report in file_reports if report.message.startswith("OperationTimeoutError")
-        )
+        # FIX 1.8: используем явное поле timed_out
+        timeout_count = sum(1 for report in file_reports if report.timed_out)
 
         return BatchProcessingReport(
             total=len(file_reports),

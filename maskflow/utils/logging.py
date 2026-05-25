@@ -4,16 +4,51 @@ from typing import Any
 
 import structlog
 
+# FIX 2.2: расширенный список чувствительных ключей
 SENSITIVE_KEYS = {
+    # Сырые значения
     "value",
     "text",
     "content",
     "source_text",
     "raw",
+    # Контактные данные
     "email",
     "phone",
+    # ФИО и персональные данные
+    "fio",
+    "name",
+    "surname",
+    "firstname",
+    "lastname",
+    "patronymic",
+    # Адрес
+    "address",
+    "street",
+    "city",
+    # Идентификаторы
     "inn",
     "guid",
+    "snils",
+    "passport",
+    "ogrn",
+    "kpp",
+    # Банковские реквизиты
+    "account",
+    "bik",
+    "card",
+    "iban",
+    # Учётные данные
+    "login",
+    "username",
+    "password",
+    "token",
+    "secret",
+    # Сетевые идентификаторы
+    "url",
+    "domain",
+    "ip",
+    "host",
 }
 
 

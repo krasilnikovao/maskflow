@@ -80,6 +80,15 @@ class MaskingEngine:
             masker = self.maskers.get(match.detector)
 
             if masker is None:
+                # FIX 1.3: явный pass-through — включаем текст матча как есть
+                # и обновляем last_index, чтобы следующая итерация не дублировала текст.
+                logger.warning(
+                    "no_masker_for_detector",
+                    detector=match.detector,
+                    note="match passed through unmasked",
+                )
+                result.append(text[last_index : match.end])
+                last_index = match.end
                 continue
 
             result.append(text[last_index : match.start])

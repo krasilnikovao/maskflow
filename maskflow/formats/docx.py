@@ -1,6 +1,7 @@
 from collections import Counter
 from pathlib import Path
 
+import structlog
 from docx import Document
 from docx.document import Document as DocxDocument
 from docx.table import Table
@@ -8,6 +9,8 @@ from docx.text.paragraph import Paragraph
 
 from maskflow.core.engine import MaskingEngine
 from maskflow.core.types import AnalysisResult
+
+logger = structlog.get_logger(__name__)
 
 
 class DocxProcessor:
@@ -109,13 +112,20 @@ class DocxProcessor:
                     self._process_table(nested_table)
 
     def _process_paragraph(self, paragraph: Paragraph) -> None:
-        """Маскируем абзац как единое целое.
+        """Маскируем абзац с сохранением форматирования runs по возможности.
 
-        Word часто разбивает один логический фрагмент на несколько runs
-        из-за форматирования, поэтому регулярка по отдельным run.text может
-        пропустить email/телефон. Склеиваем весь paragraph.text, маскируем,
-        затем переустанавливаем результат в первый run и очищаем остальные.
-        Форматирование, к сожалению, при таком подходе унаследуется от первого run.
+        Стратегия (двухфазная):
+
+        Фаза 1 — per-run masking.
+            Каждый run маскируется отдельно. Форматирование (bold, italic,
+            font, color и т. д.) сохраняется полностью. Применяется, когда
+            чувствительное значение полностью умещается в одном run.
+
+        Фаза 2 — merge fallback.
+            Если склейка per-run результатов отличается от маскирования
+            всего paragraph.text (т. е. чувствительное значение «разорвано»
+            между runs), форматирование первого run расширяется на весь абзац,
+            остальные runs зануляются. Потеря форматирования логируется.
         """
         if not paragraph.runs:
             return
@@ -124,11 +134,30 @@ class DocxProcessor:
         if not original:
             return
 
-        masked = self.engine.process_text(original)
-        if masked == original:
+        # Фаза 1: per-run masking
+        run_results = [
+            self.engine.process_text(run.text) if run.text else run.text
+            for run in paragraph.runs
+        ]
+        per_run_joined = "".join(r or "" for r in run_results)
+        full_masked = self.engine.process_text(original)
+
+        if full_masked == original:
+            # Нет чувствительных данных — ничего не делаем
             return
 
+        if per_run_joined == full_masked:
+            # Фаза 1 достаточна — применяем с сохранением форматирования
+            for run, new_text in zip(paragraph.runs, run_results, strict=True):
+                run.text = new_text
+            return
+
+        # Фаза 2: cross-run entity — откат к merge
+        logger.warning(
+            "docx_cross_run_entity_detected",
+            note="Paragraph formatting reduced to first-run style due to cross-run sensitive value",
+        )
         first_run = paragraph.runs[0]
-        first_run.text = masked
+        first_run.text = full_masked
         for run in paragraph.runs[1:]:
             run.text = ""

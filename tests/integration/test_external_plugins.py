@@ -6,6 +6,37 @@ from maskflow.cli.app import app
 
 runner = CliRunner()
 
+# Plugin source embedded in tests — uses the new __init__ style required by
+# RegexDetector since class-level 'pattern' was moved to __init__ parameters.
+_PLUGIN_SOURCE = """\
+import regex
+
+from maskflow.detectors.regex_base import RegexDetector
+from maskflow.maskers.hmac_masker import HmacMasker
+from maskflow.plugins.registry import PluginRegistry
+from maskflow.plugins.spec import PluginSpec
+
+
+CUSTOM_CODE_REGEX = regex.compile(r"CODE-[0-9]{4}")
+
+
+class CustomCodeDetector(RegexDetector):
+    name = "custom_code"
+
+    def __init__(self) -> None:
+        super().__init__(CUSTOM_CODE_REGEX)
+
+
+def register_plugins(registry: PluginRegistry) -> None:
+    registry.register(
+        PluginSpec(
+            name="custom_code",
+            detector=CustomCodeDetector(),
+            masker_factory=HmacMasker,
+        ),
+    )
+"""
+
 
 def write_config(path: Path) -> None:
     path.write_text(
@@ -28,35 +59,7 @@ def test_cli_loads_external_plugin_for_single_file(tmp_path: Path) -> None:
     plugins_dir.mkdir()
 
     plugin_file = plugins_dir / "custom_code_plugin.py"
-    plugin_file.write_text(
-        """
-import regex
-
-from maskflow.detectors.regex_base import RegexDetector
-from maskflow.maskers.hmac_masker import HmacMasker
-from maskflow.plugins.registry import PluginRegistry
-from maskflow.plugins.spec import PluginSpec
-
-
-CUSTOM_CODE_REGEX = regex.compile(r"CODE-[0-9]{4}")
-
-
-class CustomCodeDetector(RegexDetector):
-    name = "custom_code"
-    pattern = CUSTOM_CODE_REGEX
-
-
-def register_plugins(registry: PluginRegistry) -> None:
-    registry.register(
-        PluginSpec(
-            name="custom_code",
-            detector=CustomCodeDetector(),
-            masker_factory=HmacMasker,
-        ),
-    )
-""",
-        encoding="utf-8",
-    )
+    plugin_file.write_text(_PLUGIN_SOURCE, encoding="utf-8")
 
     config = tmp_path / "config.yaml"
     source = tmp_path / "source.txt"
@@ -91,35 +94,7 @@ def test_cli_loads_external_plugin_for_mask_dir(tmp_path: Path) -> None:
     plugins_dir.mkdir()
 
     plugin_file = plugins_dir / "custom_code_plugin.py"
-    plugin_file.write_text(
-        """
-import regex
-
-from maskflow.detectors.regex_base import RegexDetector
-from maskflow.maskers.hmac_masker import HmacMasker
-from maskflow.plugins.registry import PluginRegistry
-from maskflow.plugins.spec import PluginSpec
-
-
-CUSTOM_CODE_REGEX = regex.compile(r"CODE-[0-9]{4}")
-
-
-class CustomCodeDetector(RegexDetector):
-    name = "custom_code"
-    pattern = CUSTOM_CODE_REGEX
-
-
-def register_plugins(registry: PluginRegistry) -> None:
-    registry.register(
-        PluginSpec(
-            name="custom_code",
-            detector=CustomCodeDetector(),
-            masker_factory=HmacMasker,
-        ),
-    )
-""",
-        encoding="utf-8",
-    )
+    plugin_file.write_text(_PLUGIN_SOURCE, encoding="utf-8")
 
     config = tmp_path / "config.yaml"
     source_dir = tmp_path / "source"

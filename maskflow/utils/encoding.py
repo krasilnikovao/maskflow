@@ -1,3 +1,23 @@
+"""Эвристика определения кодировки текстовых файлов.
+
+Для точного определения кодировки рекомендуется установить charset-normalizer:
+
+    pip install charset-normalizer
+
+После этого можно заменить detect_text_encoding на:
+
+    from charset_normalizer import from_path
+
+    def detect_text_encoding(path: Path, **_: object) -> str:
+        result = from_path(path).best()
+        return str(result.encoding) if result is not None else DEFAULT_ENCODING
+
+Без charset-normalizer используется простая побайтовая проверка. ВНИМАНИЕ:
+cp1251 успешно декодирует любые однобайтовые последовательности, поэтому она
+«выигрывает» всегда, когда utf-8 не подходит. Это может давать ложные
+срабатывания на файлах в других 8-битных кодировках.
+"""
+
 from pathlib import Path
 
 DEFAULT_ENCODING = "utf-8"
@@ -18,8 +38,11 @@ def detect_text_encoding(
     """Грубая эвристика выбора кодировки.
 
     Читает ТОЛЬКО первые sample_size байт (не весь файл!).
-    Внимание: cp1251 декодирует любые байты, поэтому она "выигрывает" всегда,
-    если utf-8 не подходит. Для точной детекции подключайте charset-normalizer.
+
+    Ограничения:
+    - cp1251 декодирует любые байты — она «выигрывает» при любом
+      однобайтовом содержимом, если utf-8 отказал.
+    - Для точной детекции используйте charset-normalizer (см. docstring модуля).
     """
     encodings = fallback_encodings or FALLBACK_ENCODINGS
 

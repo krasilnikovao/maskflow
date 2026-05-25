@@ -17,6 +17,8 @@ class FileProcessingReport:
     detector_counts: dict[str, int] = field(default_factory=dict)
     detector_timings_ms: dict[str, int] = field(default_factory=dict)
     audit_trail: AuditTrail = field(default_factory=AuditTrail)
+    # FIX 1.8: явное поле вместо хрупкого startswith("OperationTimeoutError")
+    timed_out: bool = False
 
 
 @dataclass(frozen=True, slots=True)

@@ -15,4 +15,6 @@ EMAIL_REGEX = regex.compile(
 
 class EmailDetector(RegexDetector):
     name = "email"
-    pattern = EMAIL_REGEX
+
+    def __init__(self) -> None:
+        super().__init__(EMAIL_REGEX)
