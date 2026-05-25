@@ -30,6 +30,7 @@ dist/
 .coverage
 coverage.xml
 htmlcov/
+tests/user/
 
 # -----------------------------------------------------------------------------
 # Type checking
