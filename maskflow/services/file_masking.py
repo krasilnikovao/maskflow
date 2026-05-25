@@ -112,7 +112,7 @@ class FileMaskingService:
         engine: MaskingEngine,
         field_engine: FieldRuleEngine,
     ) -> _FormatHandler | None:
-        if suffix == ".txt":
+        if suffix in {".txt", ".log"}:
             text_processor = TextProcessor(engine)
 
             def run_text(source: Path, destination: Path) -> AnalysisResult:
@@ -161,26 +161,36 @@ class FileMaskingService:
             docx_processor = DocxProcessor(engine)
 
             def run_docx(source: Path, destination: Path) -> AnalysisResult:
-                analysis = docx_processor.analyze(source)
-                atomic_write_binary_via_temp(
-                    destination=destination,
-                    writer=lambda temp_path: docx_processor.process(source, temp_path),
-                )
-                return analysis
+                # Single-pass: process_with_stats маскирует и собирает статистику
+                # за один проход вместо двух отдельных analyze() + process().
+                result_holder: list[AnalysisResult] = []
 
-            return _FormatHandler(needs_atomic=True, run=run_docx)
+                def _writer(temp_path: Path) -> None:
+                    result_holder.append(
+                        docx_processor.process_with_stats(source, temp_path)
+                    )
+
+                atomic_write_binary_via_temp(destination=destination, writer=_writer)
+                return result_holder[0]
+
+            return _FormatHandler(needs_atomic=False, run=run_docx)
 
         if suffix == ".xlsx":
             xlsx_processor = XlsxProcessor(engine)
 
             def run_xlsx(source: Path, destination: Path) -> AnalysisResult:
-                analysis = xlsx_processor.analyze(source)
-                atomic_write_binary_via_temp(
-                    destination=destination,
-                    writer=lambda temp_path: xlsx_processor.process(source, temp_path),
-                )
-                return analysis
+                # Single-pass: process_with_stats маскирует и собирает статистику
+                # за один проход вместо двух отдельных analyze() + process().
+                result_holder_xlsx: list[AnalysisResult] = []
 
-            return _FormatHandler(needs_atomic=True, run=run_xlsx)
+                def _writer_xlsx(temp_path: Path) -> None:
+                    result_holder_xlsx.append(
+                        xlsx_processor.process_with_stats(source, temp_path)
+                    )
+
+                atomic_write_binary_via_temp(destination=destination, writer=_writer_xlsx)
+                return result_holder_xlsx[0]
+
+            return _FormatHandler(needs_atomic=False, run=run_xlsx)
 
         return None

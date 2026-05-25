@@ -1,4 +1,5 @@
 from collections import Counter
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import structlog
@@ -11,6 +12,15 @@ from maskflow.core.engine import MaskingEngine
 from maskflow.core.types import AnalysisResult
 
 logger = structlog.get_logger(__name__)
+
+
+@dataclass(slots=True)
+class _DocxStats:
+    matches_found: int = 0
+    matches_applied: int = 0
+    matches_skipped: int = 0
+    detector_counts: Counter[str] = field(default_factory=Counter)
+    detector_timings_ms: Counter[str] = field(default_factory=Counter)
 
 
 class DocxProcessor:
@@ -80,38 +90,76 @@ class DocxProcessor:
 
     def process(self, source: Path | str, destination: Path | str) -> None:
         document = Document(str(source))
-        self._process_document(document)
+        self._process_document(document, stats=None)
         document.save(str(destination))
 
-    def _process_document(self, document: DocxDocument) -> None:
+    def process_with_stats(
+        self,
+        source: Path | str,
+        destination: Path | str,
+    ) -> AnalysisResult:
+        """Single-pass: маскирует и возвращает статистику за один проход.
+
+        Устраняет двойное чтение файла по сравнению с analyze() + process().
+        """
+        document = Document(str(source))
+        stats = _DocxStats()
+        self._process_document(document, stats=stats)
+        document.save(str(destination))
+
+        return AnalysisResult(
+            matches_found=stats.matches_found,
+            matches_applied=stats.matches_applied,
+            matches_skipped=stats.matches_skipped,
+            detector_counts=dict(stats.detector_counts),
+            detector_timings_ms=dict(stats.detector_timings_ms),
+        )
+
+    def _process_document(
+        self,
+        document: DocxDocument,
+        stats: "_DocxStats | None",
+    ) -> None:
         for paragraph in document.paragraphs:
-            self._process_paragraph(paragraph)
+            self._process_paragraph(paragraph, stats)
 
         for table in document.tables:
-            self._process_table(table)
+            self._process_table(table, stats)
 
         for section in document.sections:
-            self._process_header_footer_paragraphs(section.header.paragraphs)
-            self._process_header_footer_paragraphs(section.footer.paragraphs)
+            self._process_header_footer_paragraphs(section.header.paragraphs, stats)
+            self._process_header_footer_paragraphs(section.footer.paragraphs, stats)
 
             for table in section.header.tables:
-                self._process_table(table)
+                self._process_table(table, stats)
             for table in section.footer.tables:
-                self._process_table(table)
+                self._process_table(table, stats)
 
-    def _process_header_footer_paragraphs(self, paragraphs: list[Paragraph]) -> None:
+    def _process_header_footer_paragraphs(
+        self,
+        paragraphs: list[Paragraph],
+        stats: "_DocxStats | None",
+    ) -> None:
         for paragraph in paragraphs:
-            self._process_paragraph(paragraph)
+            self._process_paragraph(paragraph, stats)
 
-    def _process_table(self, table: Table) -> None:
+    def _process_table(
+        self,
+        table: Table,
+        stats: "_DocxStats | None",
+    ) -> None:
         for row in table.rows:
             for cell in row.cells:
                 for paragraph in cell.paragraphs:
-                    self._process_paragraph(paragraph)
+                    self._process_paragraph(paragraph, stats)
                 for nested_table in cell.tables:
-                    self._process_table(nested_table)
+                    self._process_table(nested_table, stats)
 
-    def _process_paragraph(self, paragraph: Paragraph) -> None:
+    def _process_paragraph(
+        self,
+        paragraph: Paragraph,
+        stats: "_DocxStats | None",
+    ) -> None:
         """Маскируем абзац с сохранением форматирования runs по возможности.
 
         Стратегия (двухфазная):
@@ -135,12 +183,29 @@ class DocxProcessor:
             return
 
         # Фаза 1: per-run masking
-        run_results = [
-            self.engine.process_text(run.text) if run.text else run.text
-            for run in paragraph.runs
-        ]
+        if stats is not None:
+            run_pairs = [
+                self.engine.process_with_stats(run.text) if run.text else (run.text, None)
+                for run in paragraph.runs
+            ]
+            run_results = [masked for masked, _ in run_pairs]
+            # Аккумулируем статистику по всем runs
+            for _, analysis in run_pairs:
+                if analysis is not None:
+                    stats.matches_found += analysis.matches_found
+                    stats.matches_applied += analysis.matches_applied
+                    stats.matches_skipped += analysis.matches_skipped
+                    stats.detector_counts.update(analysis.detector_counts)
+                    stats.detector_timings_ms.update(analysis.detector_timings_ms)
+            full_masked, full_analysis = self.engine.process_with_stats(original)
+        else:
+            run_results = [
+                self.engine.process_text(run.text) if run.text else run.text
+                for run in paragraph.runs
+            ]
+            full_masked = self.engine.process_text(original)
+
         per_run_joined = "".join(r or "" for r in run_results)
-        full_masked = self.engine.process_text(original)
 
         if full_masked == original:
             # Нет чувствительных данных — ничего не делаем
@@ -153,6 +218,8 @@ class DocxProcessor:
             return
 
         # Фаза 2: cross-run entity — откат к merge
+        # В stats уже подсчитана статистика per-run; для full_masked статистику
+        # не добавляем повторно, так как это те же данные.
         logger.warning(
             "docx_cross_run_entity_detected",
             note="Paragraph formatting reduced to first-run style due to cross-run sensitive value",

@@ -1,7 +1,12 @@
 from maskflow.detectors.email import EmailDetector
 from maskflow.detectors.guid import GuidDetector
 from maskflow.detectors.inn import InnDetector
+from maskflow.detectors.ip_address import IpAddressDetector
+from maskflow.detectors.kpp import KppDetector
+from maskflow.detectors.ogrn import OgrnDetector
 from maskflow.detectors.phone import PhoneDetector
+from maskflow.detectors.snils import SnilsDetector
+from maskflow.detectors.url import UrlDetector
 from maskflow.maskers.hmac_masker import HmacMasker
 from maskflow.plugins.registry import PluginRegistry
 from maskflow.plugins.spec import PluginSpec
@@ -38,6 +43,46 @@ def build_builtin_plugin_registry() -> PluginRegistry:
         PluginSpec(
             name="guid",
             detector=GuidDetector(),
+            masker_factory=HmacMasker,
+        ),
+    )
+
+    registry.register(
+        PluginSpec(
+            name="snils",
+            detector=SnilsDetector(),
+            masker_factory=HmacMasker,
+        ),
+    )
+
+    registry.register(
+        PluginSpec(
+            name="kpp",
+            detector=KppDetector(),
+            masker_factory=HmacMasker,
+        ),
+    )
+
+    registry.register(
+        PluginSpec(
+            name="ogrn",
+            detector=OgrnDetector(),
+            masker_factory=HmacMasker,
+        ),
+    )
+
+    registry.register(
+        PluginSpec(
+            name="ip_address",
+            detector=IpAddressDetector(),
+            masker_factory=HmacMasker,
+        ),
+    )
+
+    registry.register(
+        PluginSpec(
+            name="url",
+            detector=UrlDetector(),
             masker_factory=HmacMasker,
         ),
     )

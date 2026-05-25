@@ -3,6 +3,7 @@ import sys
 from typing import Any
 
 import structlog
+from structlog.types import FilteringBoundLogger
 
 # FIX 2.2: расширенный список чувствительных ключей
 SENSITIVE_KEYS = {
@@ -94,5 +95,5 @@ def configure_logging(
     )
 
 
-def get_logger(name: str) -> Any:
-    return structlog.get_logger(name)
+def get_logger(name: str) -> FilteringBoundLogger:
+    return structlog.get_logger(name)  # type: ignore[return-value]

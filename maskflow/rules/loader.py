@@ -6,7 +6,14 @@ import yaml
 
 from maskflow.rules.models import AppConfig
 
-INVALID_DEFAULT_SECRETS = {"", "CHANGE_ME", "change_me", "changeme"}
+INVALID_DEFAULT_SECRETS = {
+    "",
+    "CHANGE_ME",
+    "change_me",
+    "changeme",
+    # Дефолтное значение из configs/default.yaml — явно не настроено
+    "set-via-MASKFLOW_SECRET",
+}
 
 
 class RulesLoader:

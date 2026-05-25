@@ -4,9 +4,9 @@
 reversible mapping) между процессами в ProcessPoolExecutor.
 """
 
-import os
 import sys
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from types import TracebackType
@@ -91,13 +91,10 @@ else:
 
 
 @contextmanager
-def file_lock(path: Path, timeout: float = 30.0):  # type: ignore[no-untyped-def]
+def file_lock(path: Path, timeout: float = 30.0) -> Generator[None, None, None]:
     lock = FileLock(path, timeout=timeout)
     lock.acquire()
     try:
         yield
     finally:
         lock.release()
-
-
-_ = os  # keep import in case future code uses os explicitly

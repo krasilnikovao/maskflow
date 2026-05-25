@@ -25,6 +25,31 @@ rules:
     mode: hmac
     prefix: GUID
 
+  snils:
+    enabled: true
+    mode: hmac
+    prefix: SNILS
+
+  kpp:
+    enabled: true
+    mode: hmac
+    prefix: KPP
+
+  ogrn:
+    enabled: true
+    mode: hmac
+    prefix: OGRN
+
+  ip_address:
+    enabled: true
+    mode: hmac
+    prefix: IP
+
+  url:
+    enabled: true
+    mode: hmac
+    prefix: URL
+
 field_rules: {}
 
 runtime_limits:

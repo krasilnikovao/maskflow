@@ -5,6 +5,7 @@ from maskflow.core.tasks import FileTask
 
 SUPPORTED_EXTENSIONS = {
     ".txt",
+    ".log",
     ".docx",
     ".xlsx",
     ".sql",

@@ -21,11 +21,16 @@ _bundle_cache: dict[Path, EngineBundle] = {}
 
 
 def _get_or_build_bundle(config_path: Path) -> EngineBundle:
-    """Возвращает EngineBundle из кэша или строит его из конфига."""
-    if config_path not in _bundle_cache:
+    """Возвращает EngineBundle из кэша или строит его из конфига.
+
+    Ключ кэша — resolved path, чтобы "./config.yaml" и "config.yaml"
+    и symlink'и на один файл давали один и тот же бандл.
+    """
+    resolved = config_path.resolve()
+    if resolved not in _bundle_cache:
         config = RulesLoader.load(config_path)
-        _bundle_cache[config_path] = build_engine_bundle_from_config(config)
-    return _bundle_cache[config_path]
+        _bundle_cache[resolved] = build_engine_bundle_from_config(config)
+    return _bundle_cache[resolved]
 
 
 def process_file_task(task: FileTask) -> FileProcessingReport:

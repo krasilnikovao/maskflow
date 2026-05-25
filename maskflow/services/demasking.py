@@ -18,6 +18,7 @@ from maskflow.utils.encoding import detect_text_encoding
 TEXT_LIKE_EXTENSIONS = {
     ".csv",
     ".json",
+    ".log",
     ".sql",
     ".txt",
     ".xml",
