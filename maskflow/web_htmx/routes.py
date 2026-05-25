@@ -1,15 +1,18 @@
 from html import escape
 from pathlib import Path
 from string import Template
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from maskflow.api.dependencies import runtime_paths_dependency
+from maskflow.core.directory import SUPPORTED_EXTENSIONS
 from maskflow.plugins.builtin import build_builtin_plugin_registry
 from maskflow.runtime.paths import RuntimePaths
 from maskflow.runtime.settings import get_settings
+from maskflow.services.file_jobs import FileMaskingJobService
 from maskflow.services.text_masking import TextMaskingService
 
 router = APIRouter(tags=["web"])
@@ -51,6 +54,7 @@ def index(request: Request) -> HTMLResponse:
         active_index="active",
         active_jobs="",
         active_configs="",
+        supported_extensions=", ".join(sorted(SUPPORTED_EXTENSIONS)),
     )
 
 
@@ -68,6 +72,55 @@ async def web_mask_text(request: Request) -> HTMLResponse:
     )
 
     return HTMLResponse(escape(result.masked_text))
+
+
+@router.post("/web/mask-file", response_class=HTMLResponse)
+async def web_mask_file(request: Request) -> HTMLResponse:
+    form = await request.form()
+    uploaded = form.get("file")
+
+    if not isinstance(uploaded, StarletteUploadFile):
+        return HTMLResponse('<span class="error">File is required</span>', status_code=400)
+
+    service = FileMaskingJobService()
+
+    try:
+        source_path = service.save_upload(
+            filename=uploaded.filename or "",
+            stream=uploaded.file,
+        )
+        result = service.process_file(
+            source_path=source_path,
+            original_name=uploaded.filename or "",
+            config_path=get_settings().default_config,
+        )
+    except ValueError as error:
+        return HTMLResponse(
+            f'<span class="error">{escape(str(error))}</span>',
+            status_code=400,
+        )
+
+    output_name = escape(result.output_path.name)
+    download_url = (
+        f"/downloads/jobs/{quote(result.job_id)}/{quote(result.output_path.name)}"
+    )
+    report_url = f"/downloads/reports/{quote(result.report_path.name)}"
+
+    return HTMLResponse(
+        "\n".join(
+            [
+                '<div class="job-result">',
+                f"<strong>{output_name}</strong>",
+                "<dl>",
+                f"<div><dt>Matches</dt><dd>{result.report.matches_applied}</dd></div>",
+                f"<div><dt>Skipped</dt><dd>{result.report.matches_skipped}</dd></div>",
+                "</dl>",
+                f'<a class="button-link" href="{download_url}">Download Masked File</a>',
+                f'<a class="secondary-link" href="{report_url}">Report JSON</a>',
+                "</div>",
+            ],
+        )
+    )
 
 
 @router.get("/jobs", response_class=HTMLResponse)

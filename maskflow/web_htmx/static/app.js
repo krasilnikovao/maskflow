@@ -1,18 +1,18 @@
-document.querySelectorAll("[data-mask-form]").forEach((form) => {
+document.querySelectorAll("[data-ajax-form]").forEach((form) => {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const target = document.querySelector("#mask-result");
+    const targetSelector = form.getAttribute("data-target");
+    const target = targetSelector ? document.querySelector(targetSelector) : null;
     if (!(target instanceof HTMLElement)) {
       return;
     }
 
+    const formData = new FormData(form);
+    const isMultipart = form.enctype === "multipart/form-data";
     const response = await fetch(form.action, {
       method: "POST",
-      body: new URLSearchParams(new FormData(form)),
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      body: isMultipart ? formData : new URLSearchParams(formData),
     });
 
     target.innerHTML = await response.text();

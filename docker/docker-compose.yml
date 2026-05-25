@@ -13,4 +13,4 @@ services:
       - ../data:/data
     ports:
       - "3100:3100"
-    command: ["api", "--host", "0.0.0.0", "--port", "3100"]
+    command: ["web", "--host", "0.0.0.0", "--port", "3100"]

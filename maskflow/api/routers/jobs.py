@@ -1,10 +1,11 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from maskflow.api.dependencies import settings_dependency
-from maskflow.api.schemas import MaskTextRequest, MaskTextResponse
+from maskflow.api.schemas import MaskFileResponse, MaskTextRequest, MaskTextResponse
 from maskflow.runtime.settings import MaskFlowSettings
+from maskflow.services.file_jobs import FileMaskingJobService
 from maskflow.services.text_masking import TextMaskingService
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -29,4 +30,39 @@ def mask_text(
         matches_skipped=result.matches_skipped,
         detector_counts=result.detector_counts,
         detector_timings_ms=result.detector_timings_ms,
+    )
+
+
+@router.post("/mask-file", response_model=MaskFileResponse)
+def mask_file(
+    file: UploadFile = File(...),
+    config_path: Path | None = Form(None),
+    settings: MaskFlowSettings = Depends(settings_dependency),
+) -> MaskFileResponse:
+    service = FileMaskingJobService()
+
+    try:
+        source_path = service.save_upload(
+            filename=file.filename or "",
+            stream=file.file,
+        )
+        result = service.process_file(
+            source_path=source_path,
+            original_name=file.filename or "",
+            config_path=config_path or Path(settings.default_config),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    output_name = result.output_path.name
+
+    return MaskFileResponse(
+        job_id=result.job_id,
+        original_name=result.original_name,
+        output_name=output_name,
+        matches_found=result.report.matches_found,
+        matches_applied=result.report.matches_applied,
+        matches_skipped=result.report.matches_skipped,
+        download_url=f"/downloads/jobs/{result.job_id}/{output_name}",
+        report_url=f"/downloads/reports/{result.report_path.name}",
     )

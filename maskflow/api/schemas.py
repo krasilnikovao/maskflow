@@ -31,3 +31,14 @@ class MaskTextResponse(BaseModel):
     matches_skipped: int
     detector_counts: dict[str, int]
     detector_timings_ms: dict[str, int]
+
+
+class MaskFileResponse(BaseModel):
+    job_id: str
+    original_name: str
+    output_name: str
+    matches_found: int
+    matches_applied: int
+    matches_skipped: int
+    download_url: str
+    report_url: str

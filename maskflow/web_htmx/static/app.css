@@ -96,6 +96,17 @@ textarea {
   line-height: 1.5;
 }
 
+input[type="file"] {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+}
+
 button {
   justify-self: start;
   min-width: 116px;
@@ -108,6 +119,27 @@ button {
   cursor: pointer;
 }
 
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  margin-left: 8px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .result {
   min-height: 120px;
   margin: 16px 0 0;
@@ -117,6 +149,39 @@ button {
   padding: 12px;
   background: #f9fbfc;
   white-space: pre-wrap;
+}
+
+.job-result {
+  display: grid;
+  gap: 12px;
+}
+
+.job-result dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.job-result dl div {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.job-result dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.job-result dd {
+  margin: 2px 0 0;
+}
+
+.error {
+  color: #a4232f;
+  font-weight: 700;
 }
 
 .list {

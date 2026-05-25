@@ -42,4 +42,4 @@ ENV MASKFLOW_DATA_DIR=/data
 EXPOSE 3100
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["api", "--host", "0.0.0.0", "--port", "3100"]
+CMD ["web", "--host", "0.0.0.0", "--port", "3100"]
