@@ -9,6 +9,7 @@ WORKDIR /build
 
 COPY pyproject.toml README.md ./
 COPY maskflow ./maskflow
+COPY configs ./configs
 
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install --upgrade pip \
@@ -28,7 +29,17 @@ WORKDIR /app
 
 COPY --from=builder /opt/venv /opt/venv
 COPY configs ./configs
+COPY docker/entrypoint.sh /entrypoint.sh
+
+RUN mkdir -p /data \
+    && chown -R maskflow:maskflow /data \
+    && chmod +x /entrypoint.sh
 
 USER maskflow
 
-ENTRYPOINT ["maskflow"]
+ENV MASKFLOW_DATA_DIR=/data
+
+EXPOSE 3100
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["api", "--host", "0.0.0.0", "--port", "3100"]

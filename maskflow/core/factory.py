@@ -8,6 +8,7 @@ from maskflow.plugins.builtin import build_builtin_plugin_registry
 from maskflow.plugins.loader import load_external_plugins
 from maskflow.plugins.registry import PluginRegistry
 from maskflow.rules.models import AppConfig, MaskingMode
+from maskflow.runtime.paths import resolve_data_path
 from maskflow.storage.encrypted_mapping import EncryptedMappingStore
 from maskflow.storage.entity_cache import EntityCache
 
@@ -34,13 +35,13 @@ def build_engine_bundle_from_config(
 
     if config.reversible_mapping.enabled:
         reversible_mapping = EncryptedMappingStore(
-            path=Path(config.reversible_mapping.path),
+            path=resolve_data_path(config.reversible_mapping.path),
             encryption_key_env=config.reversible_mapping.encryption_key_env,
         )
 
     if config.cache.enabled:
         entity_cache = EntityCache(
-            Path(config.cache.path),
+            resolve_data_path(config.cache.path),
         )
 
     for rule_name, rule in config.rules.items():

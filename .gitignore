@@ -27,6 +27,9 @@ dist/
 # -----------------------------------------------------------------------------
 
 .pytest_cache/
+.pytest-cache-local/
+.pytest-tmp/
+.uv-cache/
 .coverage
 coverage.xml
 htmlcov/

@@ -1,7 +1,6 @@
+# Random masking mode is not implemented yet. This example keeps HMAC mode but
+# disables cache so runs do not share runtime token state.
 pipeline:
-  # ВНИМАНИЕ: для production задавайте секрет через переменную окружения
-  # MASKFLOW_SECRET — она перекроет это значение. Здесь явное значение оставлено
-  # пустым специально, чтобы загрузчик упал, если ENV не задан.
   deterministic_secret: "set-via-MASKFLOW_SECRET"
 
 rules:
@@ -20,20 +19,15 @@ rules:
     mode: hmac
     prefix: INN
 
-  guid:
-    enabled: true
-    mode: hmac
-    prefix: GUID
-
 field_rules: {}
 
 runtime_limits:
   regex_timeout_seconds: 5
   file_timeout_seconds: 300
-  max_workers: 4
+  max_workers: 1
 
 cache:
-  enabled: true
+  enabled: false
   path: "cache/entity-cache.json"
 
 reversible_mapping:

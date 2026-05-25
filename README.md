@@ -89,8 +89,10 @@ MaskFlow не использует облачные сервисы, внешни
 ```text
 maskflow/
 ├── configs/                # YAML-конфигурации
+├── data/                   # runtime volume, не хранится в git
 ├── docker/                 # Docker-окружение
 ├── maskflow/
+│   ├── api/                # REST API adapter
 │   ├── audit/              # Audit trail и экспорт
 │   ├── cli/                # CLI интерфейс
 │   ├── core/               # Ядро pipeline
@@ -100,10 +102,12 @@ maskflow/
 │   ├── plugins/            # Plugin system
 │   ├── reports/            # Отчеты обработки
 │   ├── rules/              # Правила маскирования
+│   ├── runtime/            # ENV, settings и runtime paths
 │   ├── security/           # Security utilities
 │   ├── services/           # Сервисы обработки
 │   ├── storage/            # Cache и reversible mapping
-│   └── utils/              # Общие утилиты
+│   ├── utils/              # Общие утилиты
+│   └── web_htmx/           # Server-rendered HTMX UI adapter
 ├── plugins/                # Внешние плагины
 ├── scripts/                # Bootstrap/check scripts
 ├── tests/
@@ -112,6 +116,10 @@ maskflow/
 ├── pyproject.toml
 └── README.md
 ```
+
+`api/`, `web_htmx/` и `cli/` являются входными адаптерами. Общая логика остается в
+`services/`, `core/`, `rules/`, `formats`, `storage`, `reports` и `audit`.
+Все runtime-пути строятся от `MASKFLOW_DATA_DIR`, по умолчанию `data`.
 
 ---
 
@@ -1389,4 +1397,3 @@ Planned features:
 # License
 
 Internal / Proprietary.
-

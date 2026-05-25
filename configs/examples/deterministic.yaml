@@ -1,7 +1,4 @@
 pipeline:
-  # ВНИМАНИЕ: для production задавайте секрет через переменную окружения
-  # MASKFLOW_SECRET — она перекроет это значение. Здесь явное значение оставлено
-  # пустым специально, чтобы загрузчик упал, если ENV не задан.
   deterministic_secret: "set-via-MASKFLOW_SECRET"
 
 rules:

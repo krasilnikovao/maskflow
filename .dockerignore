@@ -15,9 +15,9 @@ dist
 *.egg-info
 tests
 .maskflow
-docker
 scripts
 plugins
 uv.lock
 .env
 .env.*
+data

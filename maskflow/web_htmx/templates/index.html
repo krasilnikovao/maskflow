@@ -1,0 +1,16 @@
+<section class="panel">
+  <form
+    class="mask-form"
+    data-mask-form
+    action="/web/mask-text"
+    method="post"
+    hx-post="/web/mask-text"
+    hx-target="#mask-result"
+    hx-swap="innerHTML"
+  >
+    <label for="text">Text</label>
+    <textarea id="text" name="text" rows="12" placeholder="Paste text to mask"></textarea>
+    <button type="submit">Mask Text</button>
+  </form>
+  <pre id="mask-result" class="result"></pre>
+</section>

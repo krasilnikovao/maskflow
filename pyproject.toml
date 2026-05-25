@@ -24,6 +24,8 @@ dependencies = [
     "python-docx>=1.1.0",
     "openpyxl>=3.1.2",
     "cryptography>=42.0.0",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +39,7 @@ dev = [
     "types-regex",
 ]
 
-api = ["fastapi>=0.111.0", "uvicorn>=0.30.0"]
+api = []
 
 nlp = ["natasha>=1.6.0", "pymorphy3>=2.0.1"]
 
@@ -75,6 +77,20 @@ no_implicit_optional = true
 
 exclude = [".venv", "build", "dist"]
 
+[[tool.mypy.overrides]]
+module = ["fastapi", "fastapi.*", "uvicorn"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["maskflow.api.*", "maskflow.web_htmx.*"]
+disallow_untyped_decorators = false
+
 [tool.setuptools.packages.find]
 include = ["maskflow*"]
 exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+maskflow = [
+    "web_htmx/templates/*.html",
+    "web_htmx/static/*",
+]
