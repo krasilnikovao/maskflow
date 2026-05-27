@@ -12,8 +12,7 @@ COPY maskflow ./maskflow
 COPY configs ./configs
 
 RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --upgrade pip \
-    && /opt/venv/bin/pip install .
+    && /opt/venv/bin/pip install --no-cache-dir .
 
 
 FROM python:3.12-slim AS runtime

@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from structlog.types import FilteringBoundLogger
@@ -96,4 +96,4 @@ def configure_logging(
 
 
 def get_logger(name: str) -> FilteringBoundLogger:
-    return structlog.get_logger(name)  # type: ignore[return-value]
+    return cast(FilteringBoundLogger, structlog.get_logger(name))
