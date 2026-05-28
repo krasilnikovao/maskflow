@@ -5,6 +5,7 @@
 .mypy_cache
 .pytest_cache
 .ruff_cache
+.uv-cache
 .vscode
 **/__pycache__
 *.pyc
@@ -21,3 +22,6 @@ uv.lock
 .env
 .env.*
 data
+.log
+pytest.ini
+README.md
