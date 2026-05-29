@@ -49,7 +49,7 @@ nlp:
       # Rule/statistical NLP provider. Изначально базовый, позже может быть
       # заменен на fine-tuned model через model_path.
       enabled: false
-      # spaCy package name для будущего автоматического скачивания.
+      # spaCy package name для автоматического скачивания в data/models/spacy.
       model_name: "ru_core_news_lg"
       # Абсолютный путь, installed package name или путь относительно data/models.
       model_path: null

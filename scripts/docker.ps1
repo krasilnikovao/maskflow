@@ -12,25 +12,32 @@ if (-not (Test-Path $envFile)) {
     exit 1
 }
 
-New-Item -ItemType Directory -Force -Path `
-    (Join-Path $dataDir "configs"), `
-    (Join-Path $dataDir "jobs"), `
-    (Join-Path $dataDir "reports"), `
-    (Join-Path $dataDir "tmp"), `
-    (Join-Path $dataDir "models") | Out-Null
+Push-Location $projectRoot
 
-Write-Host "Stopping legacy compose project '$legacyProjectName' if it exists..."
-docker compose -p $legacyProjectName -f $composeFile down --remove-orphans
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to stop legacy compose project '$legacyProjectName'."
-    exit $LASTEXITCODE
+try {
+    New-Item -ItemType Directory -Force -Path `
+        (Join-Path $dataDir "configs"), `
+        (Join-Path $dataDir "jobs"), `
+        (Join-Path $dataDir "reports"), `
+        (Join-Path $dataDir "tmp"), `
+        (Join-Path $dataDir "models") | Out-Null
+
+    Write-Host "Stopping legacy compose project '$legacyProjectName' if it exists..."
+    docker compose -p $legacyProjectName -f $composeFile down --remove-orphans
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to stop legacy compose project '$legacyProjectName'."
+        exit $LASTEXITCODE
+    }
+
+    Write-Host "Building and starting MaskFlow in detached mode..."
+    docker compose -f $composeFile up --build -d
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Docker Compose failed. Check the build output above and verify port 3100 is free."
+        exit $LASTEXITCODE
+    }
 }
-
-Write-Host "Building and starting MaskFlow in detached mode..."
-docker compose -f $composeFile up --build -d
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Docker Compose failed. Check the build output above and verify port 3100 is free."
-    exit $LASTEXITCODE
+finally {
+    Pop-Location
 }
 
 Write-Host "MaskFlow container started in detached mode."

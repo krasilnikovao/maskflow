@@ -441,6 +441,66 @@ rules:
     assert calls[0]["auto_download"] is True
 
 
+def test_cli_prepare_models_supports_spacy_provider(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    config = tmp_path / "config.yaml"
+    prepared_path = tmp_path / "models" / "spacy"
+    calls: list[dict[str, Any]] = []
+
+    config.write_text(
+        """
+pipeline:
+  deterministic_secret: "set-via-MASKFLOW_SECRET"
+
+nlp:
+  enabled: false
+  auto_download: false
+  providers:
+    spacy:
+      enabled: true
+      model_name: "ru_core_news_lg"
+      model_path: null
+      auto_download: null
+
+rules:
+  email:
+    enabled: true
+    mode: hmac
+    prefix: EMAIL
+""",
+        encoding="utf-8",
+    )
+
+    def fake_ensure_model_available(**kwargs: Any) -> Path:
+        calls.append(kwargs)
+        return prepared_path
+
+    monkeypatch.setattr(
+        "maskflow.cli.commands.models.ensure_model_available",
+        fake_ensure_model_available,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "prepare-models",
+            "--config",
+            str(config),
+            "--provider",
+            "spacy",
+            "--auto-download",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert f"spacy: {prepared_path}" in result.output
+    assert calls[0]["provider"] == "spacy"
+    assert calls[0]["model_name"] == "ru_core_news_lg"
+    assert calls[0]["auto_download"] is True
+
+
 def test_cli_prepare_models_rejects_unknown_provider(tmp_path: Path) -> None:
     config = tmp_path / "config.yaml"
     config.write_text(
@@ -464,9 +524,9 @@ rules:
             "--config",
             str(config),
             "--provider",
-            "spacy",
+            "unknown",
         ],
     )
 
     assert result.exit_code != 0
-    assert "Provider must be one of: gliner, qwen" in result.output
+    assert "Provider must be one of: gliner, spacy, qwen" in result.output

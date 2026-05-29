@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,13 @@ class MaskFlowSettings(BaseSettings):
     qwen_model: str = Field(default="Qwen/Qwen2.5-Coder-7B-Instruct")
     qwen_model_path: str | None = Field(default=None)
     qwen_device: str | None = Field(default=None)
+
+    @field_validator("default_config", mode="before")
+    @classmethod
+    def normalize_relative_default_config(cls, value: object) -> object:
+        if isinstance(value, str) and "\\" in value and ":" not in value:
+            return value.replace("\\", "/")
+        return value
 
 
 @lru_cache(maxsize=1)

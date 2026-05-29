@@ -67,13 +67,30 @@ def _build_provider(
         spacy_config = config.providers.spacy
         if not spacy_config.enabled:
             return None
+        spacy_auto_download = _effective_auto_download(
+            config.auto_download,
+            spacy_config.auto_download,
+        )
+        spacy_model_path = (
+            str(
+                ensure_model_available(
+                    provider="spacy",
+                    model_name=spacy_config.model_name,
+                    model_path=(
+                        resolve_model_path(spacy_config.model_path)
+                        if spacy_config.model_path is not None
+                        else None
+                    ),
+                    auto_download=spacy_auto_download,
+                )
+            )
+            if spacy_auto_download
+            else spacy_config.model_path
+        )
         return SpacyProvider(
             model_name=spacy_config.model_name,
-            model_path=spacy_config.model_path,
-            auto_download=_effective_auto_download(
-                config.auto_download,
-                spacy_config.auto_download,
-            ),
+            model_path=spacy_model_path,
+            auto_download=spacy_auto_download,
             batch_size=spacy_config.batch_size,
         )
 

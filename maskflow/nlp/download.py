@@ -116,18 +116,35 @@ class HuggingFaceDownloader:
 
 class SpacyDownloader:
     def download(self, model_name: str, destination: Path) -> None:
+        installed_pipeline = _find_installed_spacy_pipeline(model_name)
+        if installed_pipeline is not None:
+            _copy_spacy_pipeline(installed_pipeline, destination)
+            return
+
         try:
-            spacy_cli = import_module("spacy.cli")
+            spacy_download_module = import_module("spacy.cli.download")
         except ImportError as error:
             raise RuntimeError("spaCy is required for spaCy model download") from error
 
-        spacy_download = cast(Any, spacy_cli).download
-        spacy_download(model_name)
+        install_dir = destination / "_install"
+        if install_dir.exists():
+            shutil.rmtree(install_dir)
+        install_dir.mkdir(parents=True, exist_ok=True)
 
-        raise RuntimeError(
-            "spaCy downloaded an installed package. Copying installed package models "
-            "into data/models is not implemented yet."
+        spacy_download = cast(Any, spacy_download_module).download
+        spacy_download(
+            model_name,
+            False,
+            False,
+            None,
+            "--no-deps",
+            "--target",
+            str(install_dir),
         )
+
+        downloaded_pipeline = _find_spacy_pipeline_dir(install_dir)
+        _copy_spacy_pipeline(downloaded_pipeline, destination)
+        shutil.rmtree(install_dir)
 
 
 def _write_manifest(destination: Path, manifest: ModelManifest) -> None:
@@ -137,3 +154,50 @@ def _write_manifest(destination: Path, manifest: ModelManifest) -> None:
         destination=destination / _MANIFEST_NAME,
         content=json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
     )
+
+
+def _find_installed_spacy_pipeline(model_name: str) -> Path | None:
+    try:
+        spacy_util = import_module("spacy.util")
+        package_path = cast(Any, spacy_util).get_package_path(model_name)
+    except (ImportError, ModuleNotFoundError, OSError):
+        return None
+
+    try:
+        return _find_spacy_pipeline_dir(Path(package_path))
+    except RuntimeError:
+        return None
+
+
+def _find_spacy_pipeline_dir(root: Path) -> Path:
+    if _is_spacy_pipeline_dir(root):
+        return root
+
+    for config_path in sorted(root.rglob("config.cfg")):
+        candidate = config_path.parent
+        if _is_spacy_pipeline_dir(candidate):
+            return candidate
+
+    raise RuntimeError(f"Downloaded spaCy model does not contain a pipeline: {root}")
+
+
+def _is_spacy_pipeline_dir(path: Path) -> bool:
+    return (path / "config.cfg").is_file() and (path / "meta.json").is_file()
+
+
+def _copy_spacy_pipeline(source: Path, destination: Path) -> None:
+    staging = destination / "_pipeline"
+    if staging.exists():
+        shutil.rmtree(staging)
+
+    shutil.copytree(source, staging)
+    for item in staging.iterdir():
+        target = destination / item.name
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+        shutil.move(str(item), target)
+
+    shutil.rmtree(staging)

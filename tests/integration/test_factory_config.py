@@ -212,3 +212,49 @@ rules:
 
     assert "Иван Петров" not in result
     assert "PERSON_" in result
+
+
+def test_factory_registers_default_nlp_entity_maskers_when_nlp_enabled(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+pipeline:
+  deterministic_secret: "secret"
+
+nlp:
+  enabled: true
+  min_confidence: 0.5
+  provider_order:
+    - natasha
+  providers:
+    natasha:
+      enabled: true
+
+rules:
+  email:
+    enabled: true
+    mode: hmac
+    prefix: EMAIL
+""",
+        encoding="utf-8",
+    )
+
+    config = RulesLoader.load(config_path)
+
+    def fake_build_nlp_pipeline(_config: NlpConfig) -> NlpPipeline:
+        return NlpPipeline(providers=[FakeNlpProvider()])
+
+    monkeypatch.setattr(
+        "maskflow.core.factory.build_nlp_pipeline",
+        fake_build_nlp_pipeline,
+    )
+
+    bundle = build_engine_bundle_from_config(config)
+
+    result = bundle.engine.process_text("Клиент Иван Петров пришел")
+
+    assert "Иван Петров" not in result
+    assert "PERSON_" in result

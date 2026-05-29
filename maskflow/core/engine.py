@@ -122,6 +122,15 @@ class MaskingEngine:
 
         masked = self._apply_masks(text, resolved_matches)
 
+        logger.debug(
+            "text_processed_with_stats",
+            matches_found=len(matches),
+            matches_applied=len(resolved_matches),
+            matches_skipped=len(matches) - len(resolved_matches),
+            detector_counts=dict(detector_counts),
+            detector_timings_ms=detector_timings_ms,
+        )
+
         analysis = AnalysisResult(
             matches_found=len(matches),
             matches_applied=len(resolved_matches),

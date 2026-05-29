@@ -20,6 +20,12 @@ from maskflow.storage.entity_cache import EntityCache
 # recognised by the type system but raise NotImplementedError until implemented.
 _IMPLEMENTED_MODES: frozenset[MaskingMode] = frozenset({"hmac"})
 _NLP_ENTITY_RULES: frozenset[str] = frozenset(DEFAULT_ENTITY_TYPES)
+_DEFAULT_NLP_PREFIXES: dict[str, str] = {
+    "person": "PERSON",
+    "organization": "ORG",
+    "location": "LOC",
+    "address": "ADDRESS",
+}
 
 
 def build_engine_bundle_from_config(
@@ -104,6 +110,20 @@ def build_engine_bundle_from_config(
                 reversible_mapping,
             ),
         )
+
+    if nlp_pipeline is not None:
+        for rule_name in DEFAULT_ENTITY_TYPES:
+            if rule_name in config.rules:
+                continue
+
+            _register_nlp_masker(
+                runtime_registry=runtime_registry,
+                rule_name=rule_name,
+                rule=RuleConfig(prefix=_DEFAULT_NLP_PREFIXES[rule_name]),
+                secret=config.pipeline.deterministic_secret,
+                entity_cache=entity_cache,
+                reversible_mapping=reversible_mapping,
+            )
 
     engine = MaskingEngine(
         detectors=runtime_registry.detectors,

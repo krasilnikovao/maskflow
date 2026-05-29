@@ -73,6 +73,7 @@ def configure_logging(
         format="%(message)s",
         stream=sys.stdout,
         level=level,
+        force=True,
     )
 
     processors: list[Any] = [

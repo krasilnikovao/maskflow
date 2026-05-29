@@ -333,6 +333,7 @@ data/models/
 Основные ENV-переменные:
 
 ```text
+MASKFLOW_DEFAULT_CONFIG=configs/default.yaml
 MASKFLOW_EXTRAS=download,nlp
 HF_TOKEN=
 MASKFLOW_NLP_ENABLED=false
@@ -354,6 +355,10 @@ MASKFLOW_QWEN_DEVICE=cpu
 ENV-переменные перекрывают YAML только когда они реально заданы в окружении.
 Пустые строковые значения вроде `MASKFLOW_GLINER_MODEL_PATH=` игнорируются, чтобы
 Docker Compose мог оставлять путь модели в YAML.
+
+`MASKFLOW_DEFAULT_CONFIG` задает YAML-конфиг для CLI/Web/API. В Docker можно
+использовать конфиг, встроенный в образ, например `configs/examples/nlp.yaml`,
+или файл из подключенного volume, например `/data/configs/my-config.yaml`.
 
 `HF_TOKEN` используется `huggingface_hub` для private/gated моделей и лимитов
 Hugging Face API. Публичные модели обычно скачиваются без токена. Не передавайте
@@ -386,10 +391,23 @@ nlp:
 
 ```bash
 maskflow prepare-models --config configs/default.yaml --provider gliner --auto-download
+maskflow prepare-models --config configs/default.yaml --provider spacy --auto-download
 ```
 
 Команда читает только NLP-настройки и не требует production `MASKFLOW_SECRET`.
 Без `--auto-download` она проверяет, что модель уже есть локально.
+Для spaCy модель сохраняется в `data/models/spacy/<model_name>`, а не
+устанавливается в системный Python контейнера.
+
+Для Web-маскирования через Docker нужны три условия:
+
+- образ собран с `MASKFLOW_EXTRAS=download,nlp`;
+- в runtime окружении включены `MASKFLOW_NLP_ENABLED=true` и хотя бы один provider;
+- выбранный `MASKFLOW_DEFAULT_CONFIG` доступен внутри контейнера.
+
+При `MASKFLOW_LOG_LEVEL=DEBUG` в логах обработки файла должен появиться detector
+`nlp` в `detector_timings_ms`. Если его нет, NLP pipeline не был включен в
+конфиге, который реально загрузил Web.
 
 ---
 
@@ -820,8 +838,19 @@ docker build \
 Для `docker compose` задайте в `.env`, затем пересоберите контейнер:
 
 ```text
+MASKFLOW_DEFAULT_CONFIG=configs/examples/nlp.yaml
 MASKFLOW_EXTRAS=download,nlp
 HF_TOKEN=hf_...
+MASKFLOW_NLP_ENABLED=true
+MASKFLOW_NLP_AUTO_DOWNLOAD=true
+MASKFLOW_GLINER_ENABLED=true
+```
+
+Для своего runtime-конфига положите файл в `data/configs`, затем укажите путь
+внутри контейнера:
+
+```text
+MASKFLOW_DEFAULT_CONFIG=/data/configs/my-config.yaml
 ```
 
 ## Запуск
@@ -1217,6 +1246,7 @@ In Docker this path is mounted as `/data/models`.
 Main environment variables:
 
 ```text
+MASKFLOW_DEFAULT_CONFIG=configs/default.yaml
 MASKFLOW_EXTRAS=download,nlp
 HF_TOKEN=
 MASKFLOW_NLP_ENABLED=false
@@ -1238,6 +1268,10 @@ MASKFLOW_QWEN_DEVICE=cpu
 Environment variables override YAML only when they are explicitly present in the
 process environment. Empty string values such as `MASKFLOW_GLINER_MODEL_PATH=`
 are ignored, so Docker Compose can leave model paths controlled by YAML.
+
+`MASKFLOW_DEFAULT_CONFIG` selects the YAML config used by CLI/Web/API. In Docker
+you can use a config baked into the image, such as `configs/examples/nlp.yaml`,
+or a file from the mounted volume, such as `/data/configs/my-config.yaml`.
 
 `HF_TOKEN` is used by `huggingface_hub` for private/gated models and Hugging Face
 API limits. Public models usually download without a token. Do not pass
@@ -1271,11 +1305,24 @@ Prepare a model explicitly:
 
 ```bash
 maskflow prepare-models --config configs/default.yaml --provider gliner --auto-download
+maskflow prepare-models --config configs/default.yaml --provider spacy --auto-download
 ```
 
 The command reads only NLP settings and does not require a production
 `MASKFLOW_SECRET`. Without `--auto-download`, it only verifies that the model is
 already available locally.
+For spaCy, the model is stored under `data/models/spacy/<model_name>` instead of
+being installed into the container's system Python.
+
+For Web masking through Docker, three conditions must be true:
+
+- the image is built with `MASKFLOW_EXTRAS=download,nlp`;
+- runtime env enables `MASKFLOW_NLP_ENABLED=true` and at least one provider;
+- the selected `MASKFLOW_DEFAULT_CONFIG` exists inside the container.
+
+With `MASKFLOW_LOG_LEVEL=DEBUG`, file-processing logs should include detector
+`nlp` in `detector_timings_ms`. If it is missing, the NLP pipeline was not
+enabled in the config actually loaded by Web.
 
 ---
 
@@ -1540,8 +1587,19 @@ docker build \
 For `docker compose`, set in `.env`, then rebuild the container:
 
 ```text
+MASKFLOW_DEFAULT_CONFIG=configs/examples/nlp.yaml
 MASKFLOW_EXTRAS=download,nlp
 HF_TOKEN=hf_...
+MASKFLOW_NLP_ENABLED=true
+MASKFLOW_NLP_AUTO_DOWNLOAD=true
+MASKFLOW_GLINER_ENABLED=true
+```
+
+For a custom runtime config, place the file under `data/configs`, then use the
+container path:
+
+```text
+MASKFLOW_DEFAULT_CONFIG=/data/configs/my-config.yaml
 ```
 
 ## Run

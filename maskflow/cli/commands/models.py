@@ -10,7 +10,8 @@ from maskflow.rules.loader import RulesLoader
 from maskflow.rules.models import NlpConfig
 from maskflow.runtime.settings import get_settings
 
-ModelProviderName = Literal["gliner", "qwen"]
+ModelProviderName = Literal["gliner", "spacy", "qwen"]
+_SUPPORTED_PROVIDERS = {"gliner", "spacy", "qwen"}
 
 
 def register_model_commands(app: typer.Typer) -> None:
@@ -30,7 +31,7 @@ def register_model_commands(app: typer.Typer) -> None:
             None,
             "--provider",
             "-p",
-            help="Model provider to prepare. Repeatable: gliner, qwen.",
+            help="Model provider to prepare. Repeatable: gliner, spacy, qwen.",
         ),
         auto_download: bool = typer.Option(
             False,
@@ -71,6 +72,8 @@ def _select_providers(
     selected: list[ModelProviderName] = []
     if nlp_config.providers.gliner.enabled:
         selected.append("gliner")
+    if nlp_config.providers.spacy.enabled:
+        selected.append("spacy")
     if nlp_config.providers.qwen.enabled:
         selected.append("qwen")
     return selected
@@ -82,8 +85,8 @@ def _normalize_providers(providers: list[str] | None) -> list[ModelProviderName]
 
     normalized: list[ModelProviderName] = []
     for provider in providers:
-        if provider not in {"gliner", "qwen"}:
-            raise typer.BadParameter("Provider must be one of: gliner, qwen")
+        if provider not in _SUPPORTED_PROVIDERS:
+            raise typer.BadParameter("Provider must be one of: gliner, spacy, qwen")
         normalized.append(cast(ModelProviderName, provider))
 
     return normalized
@@ -110,6 +113,25 @@ def _prepare_provider(
                 or _effective_auto_download(
                     config.auto_download,
                     gliner_config.auto_download,
+                )
+            ),
+        )
+
+    if provider == "spacy":
+        spacy_config = config.providers.spacy
+        return ensure_model_available(
+            provider="spacy",
+            model_name=spacy_config.model_name,
+            model_path=(
+                resolve_model_path(spacy_config.model_path)
+                if spacy_config.model_path is not None
+                else None
+            ),
+            auto_download=(
+                auto_download_override
+                or _effective_auto_download(
+                    config.auto_download,
+                    spacy_config.auto_download,
                 )
             ),
         )

@@ -98,3 +98,51 @@ def test_build_nlp_pipeline_respects_provider_order(
     assert gliner_provider.labels == ("person", "organization")
     assert gliner_provider.threshold == 0.7
     assert gliner_provider.batch_size == 8
+
+
+def test_build_nlp_pipeline_prepares_spacy_model_when_auto_download_enabled(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    prepared_path = tmp_path / "data" / "models" / "spacy" / "ru_core_news_lg"
+    calls: list[dict[str, object]] = []
+
+    def fake_ensure_model_available(**kwargs: object) -> Path:
+        calls.append(kwargs)
+        return prepared_path
+
+    monkeypatch.setattr(
+        "maskflow.nlp.factory.ensure_model_available",
+        fake_ensure_model_available,
+    )
+
+    pipeline = build_nlp_pipeline(
+        NlpConfig(
+            enabled=True,
+            auto_download=True,
+            provider_order=("spacy",),
+            providers=NlpProvidersConfig(
+                spacy=SpacyProviderConfig(
+                    enabled=True,
+                    model_name="ru_core_news_lg",
+                    model_path=None,
+                    auto_download=None,
+                )
+            ),
+        )
+    )
+
+    assert pipeline is not None
+    provider = pipeline.providers[0]
+
+    assert isinstance(provider, SpacyProvider)
+    assert provider.model_path == str(prepared_path)
+    assert provider.auto_download is True
+    assert calls == [
+        {
+            "provider": "spacy",
+            "model_name": "ru_core_news_lg",
+            "model_path": None,
+            "auto_download": True,
+        }
+    ]

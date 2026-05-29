@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -92,3 +93,11 @@ def test_runtime_settings_load_nlp_model_env(
     assert settings.qwen_model == "Qwen/example"
     assert settings.qwen_model_path == "qwen/env"
     assert settings.qwen_device == "cuda:1"
+
+
+def test_runtime_settings_normalizes_relative_default_config_path() -> None:
+    settings = MaskFlowSettings(
+        default_config=cast(Any, "configs\\examples\\nlp.yaml"),
+    )
+
+    assert settings.default_config == Path("configs/examples/nlp.yaml")

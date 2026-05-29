@@ -16,9 +16,18 @@ from maskflow.runtime.settings import get_settings
 from maskflow.services.demasking import DemaskingService
 from maskflow.services.file_jobs import FileMaskingJobService
 from maskflow.services.text_masking import TextMaskingService
+from maskflow.utils.logging import get_logger
 from maskflow.web_htmx.config_summary import render_nlp_summary
 
 router = APIRouter(tags=["web"])
+logger = get_logger("maskflow.web")
+_EXPECTED_WEB_ERRORS = (
+    ValueError,
+    FileNotFoundError,
+    RuntimeError,
+    ImportError,
+    OSError,
+)
 
 
 def package_dir() -> Path:
@@ -48,6 +57,13 @@ def render_template(name: str, **context: str) -> HTMLResponse:
     return HTMLResponse(html)
 
 
+def render_error(error: Exception, status_code: int) -> HTMLResponse:
+    return HTMLResponse(
+        f'<span class="error">{escape(str(error))}</span>',
+        status_code=status_code,
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
     _ = request
@@ -69,10 +85,18 @@ async def web_mask_text(request: Request) -> HTMLResponse:
     if not text:
         return HTMLResponse('<span class="error">Text is required</span>', status_code=400)
 
-    result = TextMaskingService().mask_text(
-        text=text,
-        config_path=get_settings().default_config,
-    )
+    try:
+        result = TextMaskingService().mask_text(
+            text=text,
+            config_path=get_settings().default_config,
+        )
+    except _EXPECTED_WEB_ERRORS as error:
+        logger.warning(
+            "web_mask_text_failed",
+            error_type=type(error).__name__,
+            error_message=str(error),
+        )
+        return render_error(error, status_code=400)
 
     return HTMLResponse(escape(result.masked_text))
 
@@ -90,11 +114,13 @@ async def web_demask_text(request: Request) -> HTMLResponse:
             text=text,
             config_path=get_settings().default_config,
         )
-    except ValueError as error:
-        return HTMLResponse(
-            f'<span class="error">{escape(str(error))}</span>',
-            status_code=400,
+    except _EXPECTED_WEB_ERRORS as error:
+        logger.warning(
+            "web_demask_text_failed",
+            error_type=type(error).__name__,
+            error_message=str(error),
         )
+        return render_error(error, status_code=400)
 
     return HTMLResponse(escape(demasked))
 
@@ -119,11 +145,20 @@ async def web_mask_file(request: Request) -> HTMLResponse:
             original_name=uploaded.filename or "",
             config_path=get_settings().default_config,
         )
-    except ValueError as error:
-        return HTMLResponse(
-            f'<span class="error">{escape(str(error))}</span>',
-            status_code=400,
+    except _EXPECTED_WEB_ERRORS as error:
+        logger.warning(
+            "web_mask_file_failed",
+            error_type=type(error).__name__,
+            error_message=str(error),
         )
+        return render_error(error, status_code=400)
+    except Exception as error:
+        logger.error(
+            "web_mask_file_unexpected_error",
+            error_type=type(error).__name__,
+            error_message=str(error),
+        )
+        return render_error(error, status_code=500)
 
     output_name = escape(result.output_path.name)
     download_url = (
@@ -168,11 +203,20 @@ async def web_demask_file(request: Request) -> HTMLResponse:
             original_name=uploaded.filename or "",
             config_path=get_settings().default_config,
         )
-    except ValueError as error:
-        return HTMLResponse(
-            f'<span class="error">{escape(str(error))}</span>',
-            status_code=400,
+    except _EXPECTED_WEB_ERRORS as error:
+        logger.warning(
+            "web_demask_file_failed",
+            error_type=type(error).__name__,
+            error_message=str(error),
         )
+        return render_error(error, status_code=400)
+    except Exception as error:
+        logger.error(
+            "web_demask_file_unexpected_error",
+            error_type=type(error).__name__,
+            error_message=str(error),
+        )
+        return render_error(error, status_code=500)
 
     output_name = escape(result.output_path.name)
     download_url = (
