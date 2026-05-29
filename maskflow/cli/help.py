@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import click
-from click.core import Context, Option, Parameter
-from typer.core import TyperCommand, TyperGroup
+import typer._click as click
+from typer._click.core import Context, Parameter
+from typer.core import TyperCommand, TyperGroup, TyperOption
 
 from maskflow.cli.i18n import tr
 
@@ -21,14 +21,14 @@ def _show_help_callback(
     ctx.exit()
 
 
-def _localized_help_option(command: Any, ctx: Context) -> Option | None:
+def _localized_help_option(command: Any, ctx: Context) -> TyperOption | None:
     help_options = command.get_help_option_names(ctx)
 
     if not help_options or not command.add_help_option:
         return None
 
-    return click.Option(
-        help_options,
+    return TyperOption(
+        param_decls=help_options,
         is_flag=True,
         is_eager=True,
         expose_value=False,
@@ -53,7 +53,7 @@ def _localize_help_text(text: str) -> str:
 
 
 class LocalizedTyperCommand(TyperCommand):
-    def get_help_option(self, ctx: Context) -> Option | None:
+    def get_help_option(self, ctx: Context) -> TyperOption | None:
         return _localized_help_option(self, ctx)
 
     def get_help(self, ctx: Context) -> str:
@@ -61,7 +61,7 @@ class LocalizedTyperCommand(TyperCommand):
 
 
 class LocalizedTyperGroup(TyperGroup):
-    def get_help_option(self, ctx: Context) -> Option | None:
+    def get_help_option(self, ctx: Context) -> TyperOption | None:
         return _localized_help_option(self, ctx)
 
     def get_help(self, ctx: Context) -> str:

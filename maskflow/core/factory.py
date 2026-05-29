@@ -3,11 +3,15 @@ from pathlib import Path
 from maskflow.core.bundle import EngineBundle
 from maskflow.core.engine import MaskingEngine
 from maskflow.core.registry import Registry
+from maskflow.detectors.nlp import NlpEntityDetector
 from maskflow.detectors.regex_base import RegexDetector
+from maskflow.maskers.hmac_masker import HmacMasker
+from maskflow.nlp.factory import build_nlp_pipeline
+from maskflow.nlp.labels import DEFAULT_ENTITY_TYPES
 from maskflow.plugins.builtin import build_builtin_plugin_registry
 from maskflow.plugins.loader import load_external_plugins
 from maskflow.plugins.registry import PluginRegistry
-from maskflow.rules.models import AppConfig, MaskingMode
+from maskflow.rules.models import AppConfig, MaskingMode, RuleConfig
 from maskflow.runtime.paths import resolve_data_path
 from maskflow.storage.encrypted_mapping import EncryptedMappingStore
 from maskflow.storage.entity_cache import EntityCache
@@ -15,6 +19,7 @@ from maskflow.storage.entity_cache import EntityCache
 # Modes that have a complete masker implementation. Other MaskingMode values are
 # recognised by the type system but raise NotImplementedError until implemented.
 _IMPLEMENTED_MODES: frozenset[MaskingMode] = frozenset({"hmac"})
+_NLP_ENTITY_RULES: frozenset[str] = frozenset(DEFAULT_ENTITY_TYPES)
 
 
 def build_engine_bundle_from_config(
@@ -44,8 +49,27 @@ def build_engine_bundle_from_config(
             resolve_data_path(config.cache.path),
         )
 
+    nlp_pipeline = build_nlp_pipeline(config.nlp)
+    if nlp_pipeline is not None:
+        runtime_registry.register_detector(NlpEntityDetector(nlp_pipeline))
+
     for rule_name, rule in config.rules.items():
         if not rule.enabled:
+            continue
+
+        if rule_name in _NLP_ENTITY_RULES:
+            if nlp_pipeline is None:
+                raise ValueError(
+                    f"Rule '{rule_name}' requires nlp.enabled=true"
+                )
+            _register_nlp_masker(
+                runtime_registry=runtime_registry,
+                rule_name=rule_name,
+                rule=rule,
+                secret=config.pipeline.deterministic_secret,
+                entity_cache=entity_cache,
+                reversible_mapping=reversible_mapping,
+            )
             continue
 
         try:
@@ -90,4 +114,30 @@ def build_engine_bundle_from_config(
         engine=engine,
         entity_cache=entity_cache,
         reversible_mapping=reversible_mapping,
+    )
+
+
+def _register_nlp_masker(
+    runtime_registry: Registry,
+    rule_name: str,
+    rule: RuleConfig,
+    secret: str,
+    entity_cache: EntityCache | None,
+    reversible_mapping: EncryptedMappingStore | None,
+) -> None:
+    if rule.mode not in _IMPLEMENTED_MODES:
+        raise NotImplementedError(
+            f"Masking mode '{rule.mode}' is defined but not yet implemented. "
+            f"Currently supported modes: {sorted(_IMPLEMENTED_MODES)}"
+        )
+
+    effective_prefix = rule.prefix or rule_name.upper()
+    runtime_registry.register_masker(
+        detector_name=rule_name,
+        masker=HmacMasker(
+            secret,
+            effective_prefix,
+            entity_cache,
+            reversible_mapping,
+        ),
     )

@@ -11,8 +11,14 @@ COPY pyproject.toml README.md ./
 COPY maskflow ./maskflow
 COPY configs ./configs
 
+ARG MASKFLOW_EXTRAS=""
+
 RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --no-cache-dir .
+    && if [ -n "$MASKFLOW_EXTRAS" ]; then \
+        /opt/venv/bin/pip install --no-cache-dir ".[${MASKFLOW_EXTRAS}]"; \
+    else \
+        /opt/venv/bin/pip install --no-cache-dir .; \
+    fi
 
 
 FROM python:3.12-slim AS runtime

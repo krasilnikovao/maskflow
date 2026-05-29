@@ -43,7 +43,14 @@ dev = [
 
 api = []
 
-nlp = ["natasha>=1.6.0", "pymorphy3>=2.0.1"]
+download = ["huggingface-hub>=0.25.0"]
+
+nlp = [
+    "gliner>=0.2.13",
+    "spacy>=3.7.0",
+    "natasha>=1.6.0",
+    "pymorphy3>=2.0.1",
+]
 
 [project.scripts]
 maskflow = "maskflow.cli.app:app"

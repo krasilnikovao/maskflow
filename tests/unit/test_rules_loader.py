@@ -47,3 +47,24 @@ def test_rules_loader_rejects_non_object_yaml(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Config root must be a YAML object"):
         RulesLoader.load(config)
+
+
+def test_rules_loader_can_skip_secret_validation(tmp_path: Path) -> None:
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        """
+pipeline:
+  deterministic_secret: "set-via-MASKFLOW_SECRET"
+
+rules:
+  email:
+    enabled: true
+    mode: hmac
+    prefix: EMAIL
+""",
+        encoding="utf-8",
+    )
+
+    loaded = RulesLoader.load(config, validate_secret=False)
+
+    assert loaded.pipeline.deterministic_secret == "set-via-MASKFLOW_SECRET"

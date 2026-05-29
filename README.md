@@ -168,17 +168,32 @@ cd maskflow
 Bootstrap выполняет:
 
 - создание virtualenv;
-- обновление pip/setuptools/wheel;
 - установку зависимостей;
-- установку проекта в editable mode;
-- установку dev-зависимостей;
+- выбор профиля установки через интерактивное меню;
 - подготовку каталогов проекта;
+- создание `.env` из `.env.example`, если файл отсутствует;
 - проверку окружения.
+
+Профили установки:
+
+| Профиль | Extras | Назначение |
+|---|---|---|
+| base | - | минимальная runtime-установка |
+| dev | dev | разработка, Ruff, MyPy, Pytest |
+| download | download | скачивание моделей из Hugging Face |
+| nlp | download,nlp | GLiNER, spaCy, Natasha |
+| all | dev,download,nlp | полный профиль разработки NLP |
 
 ## Linux
 
 ```bash
 ./scripts/bootstrap.sh
+```
+
+Без интерактивного меню:
+
+```bash
+./scripts/bootstrap.sh --profile nlp --skip-validation
 ```
 
 Если требуется:
@@ -194,6 +209,12 @@ chmod +x ./scripts/bootstrap.sh
 
 ```powershell
 ./scripts/bootstrap.ps1
+```
+
+Без интерактивного меню:
+
+```powershell
+.\scripts\bootstrap.ps1 -Profile nlp -SkipValidation
 ```
 
 Если execution policy блокирует запуск:
@@ -254,16 +275,22 @@ pip install -e .[dev]
 pip install -e .[api]
 ```
 
+### Установка поддержки скачивания моделей
+
+```bash
+pip install -e .[download]
+```
+
 ### Установка NLP модулей
 
 ```bash
-pip install -e .[nlp]
+pip install -e .[download,nlp]
 ```
 
 ### Полная установка
 
 ```bash
-pip install -e .[dev,api,nlp]
+pip install -e .[dev,api,download,nlp]
 ```
 
 ---
@@ -289,6 +316,74 @@ maskflow mask input.txt output.txt
 ```text
 configs/default.yaml
 ```
+
+## NLP и локальные модели
+
+NLP выключен по умолчанию. Базовая установка MaskFlow остается offline-first и
+не требует ML-зависимостей.
+
+Модели хранятся в runtime-каталоге:
+
+```text
+data/models/
+```
+
+В Docker этот каталог находится внутри volume `/data/models`.
+
+Основные ENV-переменные:
+
+```text
+MASKFLOW_NLP_ENABLED=false
+MASKFLOW_NLP_AUTO_DOWNLOAD=false
+MASKFLOW_GLINER_ENABLED=false
+MASKFLOW_GLINER_MODEL=urchade/gliner_multi-v2.1
+MASKFLOW_GLINER_MODEL_PATH=
+MASKFLOW_GLINER_DEVICE=cpu
+MASKFLOW_SPACY_ENABLED=false
+MASKFLOW_SPACY_MODEL=ru_core_news_lg
+MASKFLOW_SPACY_MODEL_PATH=
+MASKFLOW_NATASHA_ENABLED=false
+MASKFLOW_QWEN_ENABLED=false
+MASKFLOW_QWEN_MODEL=Qwen/Qwen2.5-Coder-7B-Instruct
+MASKFLOW_QWEN_MODEL_PATH=
+MASKFLOW_QWEN_DEVICE=cpu
+```
+
+ENV-переменные перекрывают YAML только когда они реально заданы в окружении.
+Пустые строковые значения вроде `MASKFLOW_GLINER_MODEL_PATH=` игнорируются, чтобы
+Docker Compose мог оставлять путь модели в YAML.
+
+`auto_download` выключен по умолчанию. Для production рекомендуется заранее
+разместить модели в `data/models` и явно указать `model_path` в YAML.
+
+Минимальная NLP-секция:
+
+```yaml
+nlp:
+  enabled: true
+  auto_download: false
+  providers:
+    gliner:
+      enabled: true
+      model_name: "urchade/gliner_multi-v2.1"
+      model_path: "huggingface/urchade__gliner_multi-v2.1"
+    spacy:
+      enabled: true
+      model_name: "ru_core_news_lg"
+    natasha:
+      enabled: true
+    qwen:
+      enabled: false
+```
+
+Подготовить модель вручную:
+
+```bash
+maskflow prepare-models --config configs/default.yaml --provider gliner --auto-download
+```
+
+Команда читает только NLP-настройки и не требует production `MASKFLOW_SECRET`.
+Без `--auto-download` она проверяет, что модель уже есть локально.
 
 ---
 
@@ -707,6 +802,21 @@ maskflow mask input.txt output.txt --json-logs
 docker build -f docker/Dockerfile -t maskflow .
 ```
 
+С NLP-зависимостями:
+
+```bash
+docker build \
+  --build-arg MASKFLOW_EXTRAS=download,nlp \
+  -f docker/Dockerfile \
+  -t maskflow:nlp .
+```
+
+Для `docker compose` задайте в `.env`:
+
+```text
+MASKFLOW_EXTRAS=download,nlp
+```
+
 ## Запуск
 
 ```bash
@@ -746,14 +856,14 @@ pytest
 ## Linux
 
 ```bash
-./scripts/bootstrap.sh
+./scripts/bootstrap.sh --profile dev
 ./scripts/check.sh
 ```
 
 ## Windows
 
 ```powershell
-./scripts/bootstrap.ps1
+.\scripts\bootstrap.ps1 -Profile dev
 ./scripts/check.ps1
 ```
 
@@ -935,17 +1045,32 @@ The project includes bootstrap scripts for automatic environment preparation.
 Bootstrap scripts perform:
 
 - virtualenv creation;
-- pip/setuptools/wheel upgrade;
 - dependency installation;
-- editable project installation;
-- development dependency installation;
+- interactive installation profile selection;
 - project directory initialization;
+- `.env` creation from `.env.example` when missing;
 - environment validation.
+
+Installation profiles:
+
+| Profile | Extras | Purpose |
+|---|---|---|
+| base | - | minimal runtime install |
+| dev | dev | development, Ruff, MyPy, Pytest |
+| download | download | Hugging Face model downloads |
+| nlp | download,nlp | GLiNER, spaCy, Natasha |
+| all | dev,download,nlp | full NLP development profile |
 
 ## Linux
 
 ```bash
 ./scripts/bootstrap.sh
+```
+
+Without interactive prompts:
+
+```bash
+./scripts/bootstrap.sh --profile nlp --skip-validation
 ```
 
 If required:
@@ -961,6 +1086,12 @@ chmod +x ./scripts/bootstrap.sh
 
 ```powershell
 ./scripts/bootstrap.ps1
+```
+
+Without interactive prompts:
+
+```powershell
+.\scripts\bootstrap.ps1 -Profile nlp -SkipValidation
 ```
 
 If PowerShell blocks execution:
@@ -1021,16 +1152,22 @@ pip install -e .[dev]
 pip install -e .[api]
 ```
 
+### Model download dependencies
+
+```bash
+pip install -e .[download]
+```
+
 ### NLP dependencies
 
 ```bash
-pip install -e .[nlp]
+pip install -e .[download,nlp]
 ```
 
 ### Full installation
 
 ```bash
-pip install -e .[dev,api,nlp]
+pip install -e .[dev,api,download,nlp]
 ```
 
 ---
@@ -1056,6 +1193,75 @@ Primary configuration file:
 ```text
 configs/default.yaml
 ```
+
+## NLP And Local Models
+
+NLP is disabled by default. The base MaskFlow installation remains offline-first
+and does not require ML dependencies.
+
+Models are stored under the runtime data directory:
+
+```text
+data/models/
+```
+
+In Docker this path is mounted as `/data/models`.
+
+Main environment variables:
+
+```text
+MASKFLOW_NLP_ENABLED=false
+MASKFLOW_NLP_AUTO_DOWNLOAD=false
+MASKFLOW_GLINER_ENABLED=false
+MASKFLOW_GLINER_MODEL=urchade/gliner_multi-v2.1
+MASKFLOW_GLINER_MODEL_PATH=
+MASKFLOW_GLINER_DEVICE=cpu
+MASKFLOW_SPACY_ENABLED=false
+MASKFLOW_SPACY_MODEL=ru_core_news_lg
+MASKFLOW_SPACY_MODEL_PATH=
+MASKFLOW_NATASHA_ENABLED=false
+MASKFLOW_QWEN_ENABLED=false
+MASKFLOW_QWEN_MODEL=Qwen/Qwen2.5-Coder-7B-Instruct
+MASKFLOW_QWEN_MODEL_PATH=
+MASKFLOW_QWEN_DEVICE=cpu
+```
+
+Environment variables override YAML only when they are explicitly present in the
+process environment. Empty string values such as `MASKFLOW_GLINER_MODEL_PATH=`
+are ignored, so Docker Compose can leave model paths controlled by YAML.
+
+`auto_download` is disabled by default. For production, prefer preloading models
+into `data/models` and setting `model_path` explicitly in YAML.
+
+Minimal NLP section:
+
+```yaml
+nlp:
+  enabled: true
+  auto_download: false
+  providers:
+    gliner:
+      enabled: true
+      model_name: "urchade/gliner_multi-v2.1"
+      model_path: "huggingface/urchade__gliner_multi-v2.1"
+    spacy:
+      enabled: true
+      model_name: "ru_core_news_lg"
+    natasha:
+      enabled: true
+    qwen:
+      enabled: false
+```
+
+Prepare a model explicitly:
+
+```bash
+maskflow prepare-models --config configs/default.yaml --provider gliner --auto-download
+```
+
+The command reads only NLP settings and does not require a production
+`MASKFLOW_SECRET`. Without `--auto-download`, it only verifies that the model is
+already available locally.
 
 ---
 
@@ -1308,6 +1514,21 @@ Useful for:
 docker build -f docker/Dockerfile -t maskflow .
 ```
 
+With NLP dependencies:
+
+```bash
+docker build \
+  --build-arg MASKFLOW_EXTRAS=download,nlp \
+  -f docker/Dockerfile \
+  -t maskflow:nlp .
+```
+
+For `docker compose`, set in `.env`:
+
+```text
+MASKFLOW_EXTRAS=download,nlp
+```
+
 ## Run
 
 ```bash
@@ -1347,14 +1568,14 @@ pytest
 ## Linux
 
 ```bash
-./scripts/bootstrap.sh
+./scripts/bootstrap.sh --profile dev
 ./scripts/check.sh
 ```
 
 ## Windows
 
 ```powershell
-./scripts/bootstrap.ps1
+.\scripts\bootstrap.ps1 -Profile dev
 ./scripts/check.ps1
 ```
 

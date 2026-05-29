@@ -4,6 +4,70 @@ pipeline:
   # пустым специально, чтобы загрузчик упал, если ENV не задан.
   deterministic_secret: "set-via-MASKFLOW_SECRET"
 
+nlp:
+  # NLP выключен по умолчанию: базовая установка MaskFlow не должна требовать
+  # тяжелые ML-зависимости или локальные модели.
+  enabled: false
+  # Автоматическое скачивание моделей выключено по умолчанию. В production
+  # предпочтительно заранее положить модели в data/models.
+  auto_download: false
+  min_confidence: 0.5
+  provider_order:
+    - gliner
+    - spacy
+    - natasha
+    - qwen
+  providers:
+    gliner:
+      enabled: false
+      # Hugging Face model id для будущего автоматического скачивания.
+      # Для PII-heavy режима можно использовать: urchade/gliner_multi_pii-v1
+      model_name: "urchade/gliner_multi-v2.1"
+      # Абсолютный путь или путь относительно data/models.
+      model_path: null
+      # null = наследовать nlp.auto_download.
+      auto_download: null
+      labels:
+        - person
+        - organization
+        - location
+        - address
+      device: cpu
+      threshold: 0.5
+      batch_size: 16
+
+    spacy:
+      enabled: false
+      # spaCy package name для будущего автоматического скачивания.
+      model_name: "ru_core_news_lg"
+      # Абсолютный путь, installed package name или путь относительно data/models.
+      model_path: null
+      # null = наследовать nlp.auto_download.
+      auto_download: null
+      batch_size: 32
+
+    natasha:
+      enabled: false
+
+    qwen:
+      # Optional verifier; отдельные LLM-зависимости будут подключаться позже.
+      enabled: false
+      # Hugging Face model id для будущего optional verifier.
+      model_name: "Qwen/Qwen2.5-Coder-7B-Instruct"
+      # Абсолютный путь или путь относительно data/models.
+      model_path: null
+      # null = наследовать nlp.auto_download.
+      auto_download: null
+      labels:
+        - person
+        - organization
+        - location
+        - address
+      device: cpu
+      threshold: 0.5
+      max_context_chars: 4000
+      max_new_tokens: 512
+
 rules:
   email:
     enabled: true

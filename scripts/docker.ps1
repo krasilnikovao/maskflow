@@ -16,7 +16,8 @@ New-Item -ItemType Directory -Force -Path `
     (Join-Path $dataDir "configs"), `
     (Join-Path $dataDir "jobs"), `
     (Join-Path $dataDir "reports"), `
-    (Join-Path $dataDir "tmp") | Out-Null
+    (Join-Path $dataDir "tmp"), `
+    (Join-Path $dataDir "models") | Out-Null
 
 Write-Host "Stopping legacy compose project '$legacyProjectName' if it exists..."
 docker compose -p $legacyProjectName -f $composeFile down --remove-orphans
@@ -28,7 +29,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Building and starting MaskFlow in detached mode..."
 docker compose -f $composeFile up --build -d
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Docker Compose failed. Port 3100 may already be in use by another process."
+    Write-Error "Docker Compose failed. Check the build output above and verify port 3100 is free."
     exit $LASTEXITCODE
 }
 

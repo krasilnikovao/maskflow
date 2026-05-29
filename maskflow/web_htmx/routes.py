@@ -10,11 +10,13 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from maskflow.api.dependencies import runtime_paths_dependency
 from maskflow.core.directory import SUPPORTED_EXTENSIONS
 from maskflow.plugins.builtin import build_builtin_plugin_registry
+from maskflow.rules.loader import RulesLoader
 from maskflow.runtime.paths import RuntimePaths
 from maskflow.runtime.settings import get_settings
 from maskflow.services.demasking import DemaskingService
 from maskflow.services.file_jobs import FileMaskingJobService
 from maskflow.services.text_masking import TextMaskingService
+from maskflow.web_htmx.config_summary import render_nlp_summary
 
 router = APIRouter(tags=["web"])
 
@@ -226,6 +228,7 @@ def configs(
 
     rules = build_builtin_plugin_registry()
     rule_items = "\n".join(f"<li>{escape(name)}</li>" for name in sorted(rules.all()))
+    nlp_config = RulesLoader.load(get_settings().default_config, validate_secret=False).nlp
 
     return render_template(
         "configs.html",
@@ -235,4 +238,5 @@ def configs(
         active_configs="active",
         config_items=config_items or "<li>No runtime configs yet</li>",
         rule_items=rule_items,
+        nlp_summary=render_nlp_summary(nlp_config),
     )

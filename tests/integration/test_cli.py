@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Any
 
+from pytest import MonkeyPatch
 from typer.testing import CliRunner
 
 from maskflow.cli.app import app
@@ -357,3 +359,114 @@ rules:
     assert "existing" not in masked
     assert "admin@example.com" not in masked
     assert "EMAIL_" in masked
+
+
+def test_cli_prepare_models_uses_selected_provider(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    config = tmp_path / "config.yaml"
+    prepared_path = tmp_path / "models" / "gliner"
+    calls: list[dict[str, Any]] = []
+
+    config.write_text(
+        """
+pipeline:
+  deterministic_secret: "set-via-MASKFLOW_SECRET"
+
+nlp:
+  enabled: false
+  auto_download: false
+  providers:
+    gliner:
+      enabled: false
+      model_name: "example/gliner"
+      model_path: null
+      auto_download: null
+      labels:
+        - person
+      device: cpu
+      threshold: 0.5
+      batch_size: 16
+    spacy:
+      enabled: false
+      model_name: "ru_core_news_lg"
+      model_path: null
+      auto_download: null
+      batch_size: 32
+    natasha:
+      enabled: false
+    qwen:
+      enabled: false
+      model_name: "Qwen/example"
+      model_path: null
+      auto_download: null
+      device: cpu
+      threshold: 0.5
+      max_context_chars: 4000
+
+rules:
+  email:
+    enabled: true
+    mode: hmac
+    prefix: EMAIL
+""",
+        encoding="utf-8",
+    )
+
+    def fake_ensure_model_available(**kwargs: Any) -> Path:
+        calls.append(kwargs)
+        return prepared_path
+
+    monkeypatch.setattr(
+        "maskflow.cli.commands.models.ensure_model_available",
+        fake_ensure_model_available,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "prepare-models",
+            "--config",
+            str(config),
+            "--provider",
+            "gliner",
+            "--auto-download",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert f"gliner: {prepared_path}" in result.output
+    assert calls[0]["model_name"] == "example/gliner"
+    assert calls[0]["auto_download"] is True
+
+
+def test_cli_prepare_models_rejects_unknown_provider(tmp_path: Path) -> None:
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        """
+pipeline:
+  deterministic_secret: "set-via-MASKFLOW_SECRET"
+
+rules:
+  email:
+    enabled: true
+    mode: hmac
+    prefix: EMAIL
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "prepare-models",
+            "--config",
+            str(config),
+            "--provider",
+            "spacy",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Provider must be one of: gliner, qwen" in result.output
