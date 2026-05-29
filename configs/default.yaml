@@ -11,7 +11,11 @@ nlp:
   # Автоматическое скачивание моделей выключено по умолчанию. В production
   # предпочтительно заранее положить модели в data/models.
   auto_download: false
+  # Минимальная уверенность resolved NLP-сущности. Кандидаты ниже порога
+  # resolver отбрасывает.
   min_confidence: 0.5
+  # Порядок запуска NLP-провайдеров. Resolver учитывает источники и приоритеты,
+  # но порядок важен для стабильности и диагностики.
   provider_order:
     - gliner
     - spacy
@@ -19,6 +23,7 @@ nlp:
     - qwen
   providers:
     gliner:
+      # Zero-shot NER provider. Требует extra dependency nlp.
       enabled: false
       # Hugging Face model id для будущего автоматического скачивания.
       # Для PII-heavy режима можно использовать: urchade/gliner_multi_pii-v1
@@ -27,16 +32,22 @@ nlp:
       model_path: null
       # null = наследовать nlp.auto_download.
       auto_download: null
+      # Список entity labels, которые GLiNER должен искать в тексте.
       labels:
         - person
         - organization
         - location
         - address
+      # Устройство инференса: cpu, cuda, cuda:0 и т.п.
       device: cpu
+      # Порог уверенности GLiNER до передачи кандидата в resolver.
       threshold: 0.5
+      # Зарезервированный размер batch для будущей пакетной обработки.
       batch_size: 16
 
     spacy:
+      # Rule/statistical NLP provider. Изначально базовый, позже может быть
+      # заменен на fine-tuned model через model_path.
       enabled: false
       # spaCy package name для будущего автоматического скачивания.
       model_name: "ru_core_news_lg"
@@ -44,9 +55,11 @@ nlp:
       model_path: null
       # null = наследовать nlp.auto_download.
       auto_download: null
+      # Размер batch для будущей обработки nlp.pipe.
       batch_size: 32
 
     natasha:
+      # Локальный rule/statistical provider для русского языка.
       enabled: false
 
     qwen:
@@ -58,17 +71,24 @@ nlp:
       model_path: null
       # null = наследовать nlp.auto_download.
       auto_download: null
+      # Список entity labels, которые optional verifier должен подтверждать.
       labels:
         - person
         - organization
         - location
         - address
+      # Устройство инференса: cpu, cuda, cuda:0 и т.п.
       device: cpu
+      # Минимальная уверенность Qwen-кандидата.
       threshold: 0.5
+      # Максимальная длина текстового контекста, передаваемого verifier.
       max_context_chars: 4000
+      # Максимальное число новых токенов в JSON-ответе verifier.
       max_new_tokens: 512
 
 rules:
+  # Regex/entity rules. enabled включает правило, mode выбирает способ
+  # маскирования, prefix используется в итоговом токене.
   email:
     enabled: true
     mode: hmac
@@ -114,18 +134,28 @@ rules:
     mode: hmac
     prefix: URL
 
+# Поле-ориентированные правила для структурированных форматов
+# (CSV/XLSX/JSON/XML). Пустой объект означает отсутствие field overrides.
 field_rules: {}
 
 runtime_limits:
+  # Максимальное время выполнения одного regex-детектора.
   regex_timeout_seconds: 5
+  # Общий лимит обработки файла. null отключает лимит.
   file_timeout_seconds: 300
+  # Максимум параллельных workers для batch-сценариев.
   max_workers: 4
 
 cache:
+  # Entity cache сохраняет стабильность токенов между запусками.
   enabled: true
+  # Путь относительно MASKFLOW_DATA_DIR или абсолютный путь.
   path: "cache/entity-cache.json"
 
 reversible_mapping:
+  # Хранит зашифрованное соответствие token -> original для demask.
   enabled: true
+  # Путь относительно MASKFLOW_DATA_DIR или абсолютный путь.
   path: "reversible/reversible-map.bin"
+  # ENV-переменная с Fernet key для reversible mapping.
   encryption_key_env: "MASKFLOW_REVERSIBLE_KEY"

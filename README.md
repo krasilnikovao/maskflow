@@ -333,6 +333,8 @@ data/models/
 Основные ENV-переменные:
 
 ```text
+MASKFLOW_EXTRAS=download,nlp
+HF_TOKEN=
 MASKFLOW_NLP_ENABLED=false
 MASKFLOW_NLP_AUTO_DOWNLOAD=false
 MASKFLOW_GLINER_ENABLED=false
@@ -352,6 +354,10 @@ MASKFLOW_QWEN_DEVICE=cpu
 ENV-переменные перекрывают YAML только когда они реально заданы в окружении.
 Пустые строковые значения вроде `MASKFLOW_GLINER_MODEL_PATH=` игнорируются, чтобы
 Docker Compose мог оставлять путь модели в YAML.
+
+`HF_TOKEN` используется `huggingface_hub` для private/gated моделей и лимитов
+Hugging Face API. Публичные модели обычно скачиваются без токена. Не передавайте
+`HF_TOKEN` как Docker build arg, чтобы не записать секрет в image layers.
 
 `auto_download` выключен по умолчанию. Для production рекомендуется заранее
 разместить модели в `data/models` и явно указать `model_path` в YAML.
@@ -811,10 +817,11 @@ docker build \
   -t maskflow:nlp .
 ```
 
-Для `docker compose` задайте в `.env`:
+Для `docker compose` задайте в `.env`, затем пересоберите контейнер:
 
 ```text
 MASKFLOW_EXTRAS=download,nlp
+HF_TOKEN=hf_...
 ```
 
 ## Запуск
@@ -1210,6 +1217,8 @@ In Docker this path is mounted as `/data/models`.
 Main environment variables:
 
 ```text
+MASKFLOW_EXTRAS=download,nlp
+HF_TOKEN=
 MASKFLOW_NLP_ENABLED=false
 MASKFLOW_NLP_AUTO_DOWNLOAD=false
 MASKFLOW_GLINER_ENABLED=false
@@ -1229,6 +1238,11 @@ MASKFLOW_QWEN_DEVICE=cpu
 Environment variables override YAML only when they are explicitly present in the
 process environment. Empty string values such as `MASKFLOW_GLINER_MODEL_PATH=`
 are ignored, so Docker Compose can leave model paths controlled by YAML.
+
+`HF_TOKEN` is used by `huggingface_hub` for private/gated models and Hugging Face
+API limits. Public models usually download without a token. Do not pass
+`HF_TOKEN` as a Docker build arg because that can persist the secret in image
+layers.
 
 `auto_download` is disabled by default. For production, prefer preloading models
 into `data/models` and setting `model_path` explicitly in YAML.
@@ -1523,10 +1537,11 @@ docker build \
   -t maskflow:nlp .
 ```
 
-For `docker compose`, set in `.env`:
+For `docker compose`, set in `.env`, then rebuild the container:
 
 ```text
 MASKFLOW_EXTRAS=download,nlp
+HF_TOKEN=hf_...
 ```
 
 ## Run

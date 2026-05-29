@@ -3,6 +3,55 @@
 pipeline:
   deterministic_secret: "set-via-MASKFLOW_SECRET"
 
+nlp:
+  enabled: false
+  auto_download: false
+  min_confidence: 0.5
+  provider_order:
+    - gliner
+    - spacy
+    - natasha
+    - qwen
+  providers:
+    gliner:
+      enabled: false
+      model_name: "urchade/gliner_multi-v2.1"
+      model_path: null
+      auto_download: null
+      labels:
+        - person
+        - organization
+        - location
+        - address
+      device: cpu
+      threshold: 0.5
+      batch_size: 16
+
+    spacy:
+      enabled: false
+      model_name: "ru_core_news_lg"
+      model_path: null
+      auto_download: null
+      batch_size: 32
+
+    natasha:
+      enabled: false
+
+    qwen:
+      enabled: false
+      model_name: "Qwen/Qwen2.5-Coder-7B-Instruct"
+      model_path: null
+      auto_download: null
+      labels:
+        - person
+        - organization
+        - location
+        - address
+      device: cpu
+      threshold: 0.5
+      max_context_chars: 4000
+      max_new_tokens: 512
+
 rules:
   email:
     enabled: true
@@ -18,6 +67,36 @@ rules:
     enabled: true
     mode: hmac
     prefix: INN
+
+  guid:
+    enabled: true
+    mode: hmac
+    prefix: GUID
+
+  snils:
+    enabled: true
+    mode: hmac
+    prefix: SNILS
+
+  kpp:
+    enabled: true
+    mode: hmac
+    prefix: KPP
+
+  ogrn:
+    enabled: true
+    mode: hmac
+    prefix: OGRN
+
+  ip_address:
+    enabled: true
+    mode: hmac
+    prefix: IP
+
+  url:
+    enabled: true
+    mode: hmac
+    prefix: URL
 
 field_rules: {}
 
