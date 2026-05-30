@@ -11,7 +11,7 @@ from maskflow.utils.atomic import atomic_write_text
 
 JsonValue = dict[str, Any] | list[Any] | str | int | float | bool | None
 
-_MAX_JSON_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB — предупреждение
+_MAX_JSON_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB — жёсткий лимит
 
 
 class _Removed:
@@ -145,19 +145,20 @@ class JsonProcessor:
         source: Path,
         encoding: str,
     ) -> JsonValue:
-        # FIX 4.1: предупреждение о большом файле
         try:
             size = source.stat().st_size
-            if size > _MAX_JSON_SIZE_BYTES:
-                from maskflow.utils.logging import get_logger
-
-                get_logger("maskflow.json").warning(
-                    "large_json_file_loaded_into_memory",
-                    path=str(source),
-                    size_mb=size // (1024 * 1024),
-                )
         except OSError:
-            pass
+            size = 0
+
+        if size > _MAX_JSON_SIZE_BYTES:
+            size_mb = size // (1024 * 1024)
+            limit_mb = _MAX_JSON_SIZE_BYTES // (1024 * 1024)
+            raise ValueError(
+                f"JSON file is too large to process in-memory: {size_mb} MB "
+                f"(limit: {limit_mb} MB). "
+                "For large JSON files use SQL or text format with streaming processing, "
+                "or split the file into smaller chunks before masking."
+            )
 
         with source.open(encoding=encoding) as file:
             data: Any = json.load(file)

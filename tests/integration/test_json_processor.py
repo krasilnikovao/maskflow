@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from maskflow.core.engine import MaskingEngine
 from maskflow.detectors.email import EmailDetector
-from maskflow.formats.json import JsonProcessor
+from maskflow.formats.json import _MAX_JSON_SIZE_BYTES, JsonProcessor
 from maskflow.maskers.hmac_masker import HmacMasker
 
 
@@ -118,6 +121,23 @@ def test_json_processor_analyze_returns_statistics(tmp_path: Path) -> None:
     assert analysis.matches_applied == 1
     assert analysis.matches_skipped == 0
     assert analysis.detector_counts == {"email": 1}
+
+
+def test_json_processor_rejects_oversized_file(tmp_path: Path) -> None:
+    """JSON-файл крупнее лимита должен немедленно вызывать ValueError."""
+    source = tmp_path / "big.json"
+    destination = tmp_path / "masked.json"
+
+    source.write_text('{"email": "a@b.com"}', encoding="utf-8")
+
+    processor = JsonProcessor(build_engine())
+
+    # Подменяем размер файла, чтобы не создавать реальный 100 MB файл в тесте
+    oversized = _MAX_JSON_SIZE_BYTES + 1
+    with patch("pathlib.Path.stat") as mock_stat:
+        mock_stat.return_value.st_size = oversized
+        with pytest.raises(ValueError, match="too large"):
+            processor.process(source, destination)
 
 
 def test_json_processor_preserves_non_string_values(tmp_path: Path) -> None:
