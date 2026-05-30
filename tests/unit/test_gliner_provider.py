@@ -41,10 +41,34 @@ class FakeGlinerModel:
 
 class FakeGlinerClass:
     loaded_path: str | None = None
+    loaded_model_dir: str | None = None
+    loaded_local_files_only: bool | None = None
 
     @classmethod
-    def from_pretrained(cls, model_path: str) -> FakeGlinerModel:
+    def from_pretrained(
+        cls,
+        model_path: str,
+        model_dir: str | None = None,
+        local_files_only: bool = False,
+    ) -> FakeGlinerModel:
         cls.loaded_path = model_path
+        cls.loaded_model_dir = model_dir
+        cls.loaded_local_files_only = local_files_only
+        return FakeGlinerModel()
+
+
+class FakeLegacyGlinerClass:
+    loaded_path: str | None = None
+    loaded_local_files_only: bool | None = None
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        model_path: str,
+        local_files_only: bool = False,
+    ) -> FakeGlinerModel:
+        cls.loaded_path = model_path
+        cls.loaded_local_files_only = local_files_only
         return FakeGlinerModel()
 
 
@@ -71,13 +95,42 @@ def test_gliner_provider_converts_entities_to_candidates(
 
     candidates = list(provider.detect("Клиент Иван Петров работает в ООО Ромашка"))
 
-    assert FakeGlinerClass.loaded_path == str(tmp_path / "model")
+    assert FakeGlinerClass.loaded_path == "example/gliner"
+    assert FakeGlinerClass.loaded_model_dir == str(tmp_path / "model")
+    assert FakeGlinerClass.loaded_local_files_only is False
     assert [candidate.entity_type for candidate in candidates] == [
         "person",
         "organization",
     ]
     assert candidates[0].value == "Иван Петров"
     assert candidates[0].confidence == 0.91
+
+
+def test_gliner_provider_supports_legacy_local_path_loading(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    fake_module = SimpleNamespace(GLiNER=FakeLegacyGlinerClass)
+    monkeypatch.setattr(
+        gliner_provider_module,
+        "import_module",
+        lambda _name: fake_module,
+    )
+
+    provider = GlinerProvider(
+        model_name="example/gliner",
+        model_path=tmp_path / "model",
+        auto_download=False,
+        labels=("person", "organization"),
+        device="cpu",
+        threshold=0.7,
+        batch_size=8,
+    )
+
+    list(provider.detect("Клиент Иван Петров работает в ООО Ромашка"))
+
+    assert FakeLegacyGlinerClass.loaded_path == str(tmp_path / "model")
+    assert FakeLegacyGlinerClass.loaded_local_files_only is False
 
 
 def test_gliner_provider_requires_dependency(

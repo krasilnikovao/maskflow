@@ -36,7 +36,7 @@ def _gliner_status(config: NlpConfig) -> NlpModelStatus:
         enabled=provider_config.enabled,
         model_name=provider_config.model_name,
         model_path=model_path,
-        available=is_model_available(model_path),
+        available=is_model_available(model_path, provider="huggingface"),
         auto_download=_effective_auto_download(
             config.auto_download,
             provider_config.auto_download,
@@ -56,7 +56,7 @@ def _spacy_status(config: NlpConfig) -> NlpModelStatus:
         enabled=provider_config.enabled,
         model_name=provider_config.model_name,
         model_path=model_path,
-        available=is_model_available(model_path),
+        available=is_model_available(model_path, provider="spacy"),
         auto_download=_effective_auto_download(
             config.auto_download,
             provider_config.auto_download,
@@ -76,7 +76,7 @@ def _qwen_status(config: NlpConfig) -> NlpModelStatus:
         enabled=provider_config.enabled,
         model_name=provider_config.model_name,
         model_path=model_path,
-        available=is_model_available(model_path),
+        available=is_model_available(model_path, provider="huggingface"),
         auto_download=_effective_auto_download(
             config.auto_download,
             provider_config.auto_download,

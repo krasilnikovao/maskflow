@@ -146,3 +146,37 @@ def test_build_nlp_pipeline_prepares_spacy_model_when_auto_download_enabled(
             "auto_download": True,
         }
     ]
+
+
+def test_build_nlp_pipeline_resolves_spacy_relative_model_path(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MASKFLOW_DATA_DIR", str(tmp_path / "data"))
+    get_settings.cache_clear()
+
+    try:
+        pipeline = build_nlp_pipeline(
+            NlpConfig(
+                enabled=True,
+                provider_order=("spacy",),
+                providers=NlpProvidersConfig(
+                    spacy=SpacyProviderConfig(
+                        enabled=True,
+                        model_name="ru_core_news_lg",
+                        model_path="spacy/ru_core_news_lg",
+                        auto_download=False,
+                    )
+                ),
+            )
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert pipeline is not None
+    provider = pipeline.providers[0]
+
+    assert isinstance(provider, SpacyProvider)
+    assert provider.model_path == str(
+        tmp_path / "data" / "models" / "spacy" / "ru_core_news_lg"
+    )

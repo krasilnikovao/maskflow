@@ -61,6 +61,16 @@ rules:
     mode: hmac
     prefix: PHONE
 
+  bank_account:
+    enabled: true
+    mode: hmac
+    prefix: ACCOUNT
+
+  bik:
+    enabled: true
+    mode: hmac
+    prefix: BIK
+
   inn:
     enabled: true
     mode: hmac

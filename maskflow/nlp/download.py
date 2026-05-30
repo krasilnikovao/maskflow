@@ -40,7 +40,7 @@ def ensure_model_available(
         else model_path
     )
 
-    if is_model_available(destination):
+    if is_model_available(destination, provider=provider):
         return destination
 
     if not auto_download:
@@ -51,7 +51,7 @@ def ensure_model_available(
 
     lock_path = destination.with_suffix(destination.suffix + ".lock")
     with file_lock(lock_path):
-        if is_model_available(destination):
+        if is_model_available(destination, provider=provider):
             return destination
 
         temp_destination = destination.with_name(f".{destination.name}.download")
@@ -81,8 +81,17 @@ def default_model_path(provider: ModelProvider, model_name: str) -> Path:
     return get_runtime_paths().models_dir / provider / safe_model_name
 
 
-def is_model_available(path: Path) -> bool:
-    return path.exists() and path.is_dir() and any(path.iterdir())
+def is_model_available(path: Path, provider: ModelProvider | None = None) -> bool:
+    if not path.exists() or not path.is_dir() or not any(path.iterdir()):
+        return False
+
+    if provider == "huggingface":
+        return (path / "config.json").is_file() or (path / "gliner_config.json").is_file()
+
+    if provider == "spacy":
+        return _is_spacy_pipeline_dir(path)
+
+    return True
 
 
 def _select_downloader(

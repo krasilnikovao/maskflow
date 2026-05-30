@@ -12,6 +12,24 @@ if (-not (Test-Path $envFile)) {
     exit 1
 }
 
+$envValues = @{}
+Get-Content $envFile | ForEach-Object {
+    $line = $_.Trim()
+    if (-not $line -or $line.StartsWith("#") -or -not $line.Contains("=")) {
+        return
+    }
+
+    $key, $value = $line.Split("=", 2)
+    $envValues[$key.Trim()] = $value.Trim()
+}
+
+$nlpAutoDownload = $envValues["MASKFLOW_NLP_AUTO_DOWNLOAD"] -match "^(1|true|yes|on)$"
+$extras = $envValues["MASKFLOW_EXTRAS"]
+if ($nlpAutoDownload -and ($extras -notmatch "(^|,)download(,|$)")) {
+    Write-Error "MASKFLOW_NLP_AUTO_DOWNLOAD=true requires MASKFLOW_EXTRAS to include 'download'. Example: MASKFLOW_EXTRAS=download,nlp"
+    exit 1
+}
+
 Push-Location $projectRoot
 
 try {
@@ -30,7 +48,7 @@ try {
     }
 
     Write-Host "Building and starting MaskFlow in detached mode..."
-    docker compose -f $composeFile up --build -d
+    docker compose --env-file $envFile -f $composeFile up --build -d
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Docker Compose failed. Check the build output above and verify port 3100 is free."
         exit $LASTEXITCODE
@@ -42,4 +60,4 @@ finally {
 
 Write-Host "MaskFlow container started in detached mode."
 Write-Host "Web UI: http://127.0.0.1:3100"
-Write-Host "Logs: docker compose -f `"$composeFile`" logs -f"
+Write-Host "Logs: docker compose --env-file `"$envFile`" -f `"$composeFile`" logs -f"

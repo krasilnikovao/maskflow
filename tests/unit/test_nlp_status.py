@@ -7,6 +7,8 @@ from maskflow.rules.models import (
     GlinerProviderConfig,
     NlpConfig,
     NlpProvidersConfig,
+    QwenProviderConfig,
+    SpacyProviderConfig,
 )
 from maskflow.runtime.settings import get_settings
 
@@ -61,3 +63,51 @@ def test_collect_nlp_model_status_reports_existing_explicit_path(
     assert gliner_status.enabled is True
     assert gliner_status.model_path == model_path
     assert gliner_status.available is True
+
+
+def test_collect_nlp_model_status_rejects_incomplete_huggingface_models(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "qwen"
+    model_path.mkdir()
+    (model_path / "maskflow-model.json").write_text("{}", encoding="utf-8")
+
+    statuses = collect_nlp_model_status(
+        NlpConfig(
+            providers=NlpProvidersConfig(
+                qwen=QwenProviderConfig(
+                    enabled=True,
+                    model_path=str(model_path),
+                )
+            )
+        )
+    )
+
+    qwen_status = {status.provider: status for status in statuses}["qwen"]
+
+    assert qwen_status.model_path == model_path
+    assert qwen_status.available is False
+
+
+def test_collect_nlp_model_status_rejects_incomplete_spacy_models(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "spacy"
+    model_path.mkdir()
+    (model_path / "maskflow-model.json").write_text("{}", encoding="utf-8")
+
+    statuses = collect_nlp_model_status(
+        NlpConfig(
+            providers=NlpProvidersConfig(
+                spacy=SpacyProviderConfig(
+                    enabled=True,
+                    model_path=str(model_path),
+                )
+            )
+        )
+    )
+
+    spacy_status = {status.provider: status for status in statuses}["spacy"]
+
+    assert spacy_status.model_path == model_path
+    assert spacy_status.available is False

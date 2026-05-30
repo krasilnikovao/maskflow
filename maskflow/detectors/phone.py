@@ -18,6 +18,7 @@ from maskflow.detectors.regex_base import RegexDetector
 PHONE_REGEX = regex.compile(
     r"""
     (?P<phone>
+        (?<!\d)
         (?:\+7|8)
 
         # Код области: со скобками или без
@@ -32,6 +33,7 @@ PHONE_REGEX = regex.compile(
         \d{2}
         [\s\-]?
         \d{2}
+        (?!\d)
     )
     """,
     regex.VERBOSE,

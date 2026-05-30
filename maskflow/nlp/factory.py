@@ -85,7 +85,7 @@ def _build_provider(
                 )
             )
             if spacy_auto_download
-            else spacy_config.model_path
+            else _resolve_spacy_model_path(spacy_config.model_path)
         )
         return SpacyProvider(
             model_name=spacy_config.model_name,
@@ -137,3 +137,13 @@ def _effective_auto_download(
     if provider_auto_download is None:
         return global_auto_download
     return provider_auto_download
+
+
+def _resolve_spacy_model_path(model_path: str | None) -> str | None:
+    if model_path is None:
+        return None
+
+    if "/" not in model_path and "\\" not in model_path:
+        return model_path
+
+    return str(resolve_model_path(model_path))

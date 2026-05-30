@@ -1,3 +1,5 @@
+from maskflow.detectors.bank_account import BankAccountDetector
+from maskflow.detectors.bik import BikDetector
 from maskflow.detectors.email import EmailDetector
 from maskflow.detectors.guid import GuidDetector
 from maskflow.detectors.inn import InnDetector
@@ -22,6 +24,34 @@ def test_phone_detector_finds_russian_phone() -> None:
     assert len(matches) == 1
     assert matches[0].detector == "phone"
     assert matches[0].value == "+7 (999) 123-45-67"
+
+
+def test_phone_detector_ignores_phone_like_fragment_inside_account() -> None:
+    detector = PhoneDetector()
+
+    matches = list(detector.detect("Счет 40802810538320000272"))
+
+    assert matches == []
+
+
+def test_bank_account_detector_finds_20_digit_account() -> None:
+    detector = BankAccountDetector()
+
+    matches = list(detector.detect("Счет 40802810538320000272"))
+
+    assert len(matches) == 1
+    assert matches[0].detector == "bank_account"
+    assert matches[0].value == "40802810538320000272"
+
+
+def test_bik_detector_finds_9_digit_bik_starting_with_zero() -> None:
+    detector = BikDetector()
+
+    matches = list(detector.detect("БИК 046577964"))
+
+    assert len(matches) == 1
+    assert matches[0].detector == "bik"
+    assert matches[0].value == "046577964"
 
 
 def test_inn_detector_finds_10_digit_inn() -> None:

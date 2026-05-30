@@ -8,6 +8,21 @@ from maskflow.utils.logging import get_logger
 
 logger = get_logger("maskflow.engine")
 
+_DETECTOR_PRIORITIES: dict[str, int] = {
+    "bank_account": 100,
+    "inn": 95,
+    "bik": 94,
+    "kpp": 90,
+    "ogrn": 88,
+    "snils": 86,
+    "email": 85,
+    "phone": 80,
+    "guid": 80,
+    "ip_address": 75,
+    "url": 75,
+}
+_DEFAULT_DETECTOR_PRIORITY = 10
+
 
 class MaskingEngine:
     def __init__(
@@ -40,7 +55,11 @@ class MaskingEngine:
 
         for detector in self.detectors:
             started_at = time.perf_counter()
-            detector_matches = list(detector.detect(text))
+            detector_matches = [
+                match
+                for match in detector.detect(text)
+                if not _is_key_position_match(text, match)
+            ]
 
             detector_timings_ms[detector.name] = int(
                 (time.perf_counter() - started_at) * 1000,
@@ -53,20 +72,22 @@ class MaskingEngine:
     def _resolve_overlaps(self, matches: list[Match]) -> list[Match]:
         sorted_matches = sorted(
             matches,
-            key=lambda match: (match.start, -match.length),
+            key=lambda match: (
+                -_detector_priority(match.detector),
+                -match.length,
+                match.start,
+            ),
         )
 
         resolved: list[Match] = []
-        last_end = -1
 
         for match in sorted_matches:
-            if match.start < last_end:
+            if any(_overlaps(match, accepted) for accepted in resolved):
                 continue
 
             resolved.append(match)
-            last_end = match.end
 
-        return resolved
+        return sorted(resolved, key=lambda match: match.start)
 
     def _apply_masks(
         self,
@@ -140,3 +161,26 @@ class MaskingEngine:
         )
 
         return masked, analysis
+
+
+def _detector_priority(detector: str) -> int:
+    return _DETECTOR_PRIORITIES.get(detector, _DEFAULT_DETECTOR_PRIORITY)
+
+
+def _overlaps(left: Match, right: Match) -> bool:
+    return left.start < right.end and right.start < left.end
+
+
+def _is_key_position_match(text: str, match: Match) -> bool:
+    """Return True if the match is a key in a key=value pattern.
+
+    Filters detected spans that are field names rather than values,
+    applicable to any key=value format: .env files, config files, logs,
+    structured exports, etc.
+
+    Only suppresses a match when it is immediately followed by '='
+    (with optional leading spaces). This avoids false negatives caused
+    by an unrelated '=' appearing elsewhere on the same line.
+    """
+    after_match = text[match.end : match.end + 4]
+    return after_match.lstrip(" ").startswith("=")

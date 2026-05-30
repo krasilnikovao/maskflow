@@ -63,13 +63,39 @@ class GlinerProvider(NlpProvider):
             raise RuntimeError("gliner is required for GLiNER provider") from error
 
         gliner_class = cast(Any, gliner_module).GLiNER
-        self._model = gliner_class.from_pretrained(str(self.model_path))
+        self._model = _load_gliner_model(
+            gliner_class=gliner_class,
+            model_name=self.model_name,
+            model_path=self.model_path,
+        )
 
         to_method = getattr(self._model, "to", None)
         if callable(to_method):
             to_method(self.device)
 
         return self._model
+
+
+def _load_gliner_model(
+    *,
+    gliner_class: Any,
+    model_name: str,
+    model_path: Path,
+) -> Any:
+    # GLiNER snapshots may omit tokenizer/backbone assets referenced by
+    # gliner_config.json. Keep network fallback enabled so auto-download setups
+    # can resolve those dependencies while weights still come from model_dir.
+    try:
+        return gliner_class.from_pretrained(
+            model_name,
+            model_dir=str(model_path),
+            local_files_only=False,
+        )
+    except TypeError:
+        return gliner_class.from_pretrained(
+            str(model_path),
+            local_files_only=False,
+        )
 
 
 def _entity_to_candidate(

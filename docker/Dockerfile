@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim AS deps
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -7,18 +7,25 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 WORKDIR /build
 
-COPY pyproject.toml README.md ./
-COPY maskflow ./maskflow
-COPY configs ./configs
-
 ARG MASKFLOW_EXTRAS=""
 
+COPY pyproject.toml README.md uv.lock ./
+
 RUN python -m venv /opt/venv \
+    && mkdir -p maskflow \
+    && touch maskflow/__init__.py \
     && if [ -n "$MASKFLOW_EXTRAS" ]; then \
-        /opt/venv/bin/pip install --no-cache-dir ".[${MASKFLOW_EXTRAS}]"; \
+        /opt/venv/bin/pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu ".[${MASKFLOW_EXTRAS}]"; \
     else \
         /opt/venv/bin/pip install --no-cache-dir .; \
     fi
+
+
+FROM deps AS builder
+
+COPY maskflow ./maskflow
+
+RUN /opt/venv/bin/pip install --no-cache-dir --force-reinstall --no-deps .
 
 
 FROM python:3.12-slim AS runtime

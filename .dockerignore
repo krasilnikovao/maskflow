@@ -18,7 +18,6 @@ tests
 .maskflow
 scripts
 plugins
-uv.lock
 .env
 .env.*
 data

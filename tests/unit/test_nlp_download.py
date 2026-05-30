@@ -14,6 +14,7 @@ from maskflow.runtime.settings import get_settings
 class FakeDownloader:
     def download(self, model_name: str, destination: Path) -> None:
         (destination / "model.bin").write_text(model_name, encoding="utf-8")
+        (destination / "config.json").write_text("{}", encoding="utf-8")
 
 
 def test_ensure_model_available_returns_existing_model(tmp_path: Path) -> None:
@@ -31,6 +32,56 @@ def test_ensure_model_available_returns_existing_model(tmp_path: Path) -> None:
     assert result == model_path
 
 
+def test_ensure_model_available_accepts_existing_gliner_model(tmp_path: Path) -> None:
+    model_path = tmp_path / "model"
+    model_path.mkdir()
+    (model_path / "gliner_config.json").write_text("{}", encoding="utf-8")
+
+    result = ensure_model_available(
+        provider="huggingface",
+        model_name="example/model",
+        model_path=model_path,
+        auto_download=False,
+    )
+
+    assert result == model_path
+
+
+def test_ensure_model_available_replaces_incomplete_huggingface_model(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "model"
+    model_path.mkdir()
+    (model_path / "maskflow-model.json").write_text("{}", encoding="utf-8")
+
+    result = ensure_model_available(
+        provider="huggingface",
+        model_name="example/model",
+        model_path=model_path,
+        auto_download=True,
+        downloader=FakeDownloader(),
+    )
+
+    assert result == model_path
+    assert (result / "model.bin").read_text(encoding="utf-8") == "example/model"
+
+
+def test_ensure_model_available_rejects_incomplete_huggingface_model_without_download(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "model"
+    model_path.mkdir()
+    (model_path / "maskflow-model.json").write_text("{}", encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError, match="enable nlp.auto_download"):
+        ensure_model_available(
+            provider="huggingface",
+            model_name="example/model",
+            model_path=model_path,
+            auto_download=False,
+        )
+
+
 def test_ensure_model_available_rejects_missing_model_without_download(
     tmp_path: Path,
 ) -> None:
@@ -39,6 +90,47 @@ def test_ensure_model_available_rejects_missing_model_without_download(
             provider="huggingface",
             model_name="example/model",
             model_path=tmp_path / "missing",
+            auto_download=False,
+        )
+
+
+def test_ensure_model_available_replaces_incomplete_spacy_model(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "spacy-model"
+    model_path.mkdir()
+    (model_path / "maskflow-model.json").write_text("{}", encoding="utf-8")
+
+    class FakeSpacyDownloader:
+        def download(self, model_name: str, destination: Path) -> None:
+            (destination / "config.cfg").write_text(model_name, encoding="utf-8")
+            (destination / "meta.json").write_text("{}", encoding="utf-8")
+
+    result = ensure_model_available(
+        provider="spacy",
+        model_name="ru_core_news_lg",
+        model_path=model_path,
+        auto_download=True,
+        downloader=FakeSpacyDownloader(),
+    )
+
+    assert result == model_path
+    assert (result / "config.cfg").read_text(encoding="utf-8") == "ru_core_news_lg"
+    assert (result / "meta.json").is_file()
+
+
+def test_ensure_model_available_rejects_incomplete_spacy_model_without_download(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "spacy-model"
+    model_path.mkdir()
+    (model_path / "maskflow-model.json").write_text("{}", encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError, match="enable nlp.auto_download"):
+        ensure_model_available(
+            provider="spacy",
+            model_name="ru_core_news_lg",
+            model_path=model_path,
             auto_download=False,
         )
 
