@@ -10,6 +10,7 @@ from maskflow.core.types import AnalysisResult
 from maskflow.formats.csv import CsvProcessor
 from maskflow.formats.docx import DocxProcessor
 from maskflow.formats.json import JsonProcessor
+from maskflow.formats.log import LogProcessor
 from maskflow.formats.sql import SqlProcessor
 from maskflow.formats.text import TextProcessor
 from maskflow.formats.xlsx import XlsxProcessor
@@ -112,14 +113,21 @@ class FileMaskingService:
         engine: MaskingEngine,
         field_engine: FieldRuleEngine,
     ) -> _FormatHandler | None:
-        if suffix in {".txt", ".log"}:
+        if suffix == ".txt":
             text_processor = TextProcessor(engine)
 
             def run_text(source: Path, destination: Path) -> AnalysisResult:
-                # Single-pass: маскируем и собираем счётчики за один проход.
                 return text_processor.process_with_stats(source, destination)
 
             return _FormatHandler(needs_atomic=False, run=run_text)
+
+        if suffix == ".log":
+            log_processor = LogProcessor(engine)
+
+            def run_log(source: Path, destination: Path) -> AnalysisResult:
+                return log_processor.process_with_stats(source, destination)
+
+            return _FormatHandler(needs_atomic=False, run=run_log)
 
         if suffix == ".sql":
             sql_processor = SqlProcessor(engine)
