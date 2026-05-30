@@ -61,6 +61,16 @@ def load_external_plugins(
         note="external plugins execute arbitrary Python code",
     )
 
+    if trusted_hashes is None:
+        logger.warning(
+            "external_plugins_no_hash_verification",
+            plugins_dir=str(plugins_dir),
+            note=(
+                "trusted_hashes not provided — plugin integrity is NOT verified. "
+                "Pass trusted_hashes=set_of_sha256 to enforce allowlist."
+            ),
+        )
+
     loaded = 0
     errors: list[PluginLoadError] = []
 

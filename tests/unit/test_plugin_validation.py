@@ -1,10 +1,12 @@
 from collections.abc import Iterable
+from pathlib import Path
 
 import pytest
 
 from maskflow.core.interfaces import BaseDetector
 from maskflow.core.types import Match
 from maskflow.maskers.hmac_masker import HmacMasker
+from maskflow.plugins.loader import load_external_plugins
 from maskflow.plugins.registry import PluginRegistry
 from maskflow.plugins.spec import PluginMetadata, PluginSpec
 
@@ -126,3 +128,35 @@ def test_plugin_registry_accepts_valid_metadata() -> None:
     registry.register(plugin)
 
     assert registry.has("dummy")
+
+
+def test_load_external_plugins_warns_when_no_trusted_hashes(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Загрузка без trusted_hashes должна оставлять WARNING в stdout (structlog)."""
+    plugins_dir = tmp_path / "plugins"
+    plugins_dir.mkdir()
+
+    registry = PluginRegistry()
+    load_external_plugins(registry, plugins_dir, trusted_hashes=None)
+
+    out, _ = capsys.readouterr()
+    assert "trusted_hashes" in out, (
+        "Expected a warning about missing trusted_hashes in stdout, got: " + out
+    )
+
+
+def test_load_external_plugins_no_warning_when_trusted_hashes_provided(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Загрузка с trusted_hashes не должна выдавать предупреждение об отсутствии верификации."""
+    plugins_dir = tmp_path / "plugins"
+    plugins_dir.mkdir()
+
+    registry = PluginRegistry()
+    load_external_plugins(registry, plugins_dir, trusted_hashes=set())
+
+    out, _ = capsys.readouterr()
+    assert "NOT verified" not in out
