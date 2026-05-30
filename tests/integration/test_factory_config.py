@@ -85,33 +85,30 @@ rules:
         build_engine_bundle_from_config(config)
 
 
-def test_factory_rejects_unimplemented_masking_mode(tmp_path: Path) -> None:
-    """Modes that are valid in the config schema but not yet implemented
-    must raise NotImplementedError at engine-build time, not at load time.
-
-    'partial' is a recognised MaskingMode literal so Pydantic accepts the
-    config; but no masker implementation exists for it yet, so the factory
-    should raise NotImplementedError.
-    """
+@pytest.mark.parametrize("mode", ["partial", "preserve_format", "redact"])
+def test_factory_builds_engine_for_all_masking_modes(tmp_path: Path, mode: str) -> None:
+    """Все режимы маскирования должны собираться без ошибок и маскировать email."""
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
-        """
+        f"""
 pipeline:
   deterministic_secret: "secret"
 
 rules:
   email:
     enabled: true
-    mode: partial
+    mode: {mode}
     prefix: EMAIL
 """,
         encoding="utf-8",
     )
 
     config = RulesLoader.load(config_path)
+    bundle = build_engine_bundle_from_config(config)
 
-    with pytest.raises(NotImplementedError, match="partial"):
-        build_engine_bundle_from_config(config)
+    result = bundle.engine.process_text("Contact: admin@example.com")
+
+    assert "admin@example.com" not in result
 
 
 def test_factory_rejects_nlp_rule_without_enabled_nlp(tmp_path: Path) -> None:

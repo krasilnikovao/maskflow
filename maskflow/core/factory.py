@@ -2,10 +2,14 @@ from pathlib import Path
 
 from maskflow.core.bundle import EngineBundle
 from maskflow.core.engine import MaskingEngine
+from maskflow.core.interfaces import BaseMasker
 from maskflow.core.registry import Registry
 from maskflow.detectors.nlp import NlpEntityDetector
 from maskflow.detectors.regex_base import RegexDetector
 from maskflow.maskers.hmac_masker import HmacMasker
+from maskflow.maskers.partial_masker import PartialMasker
+from maskflow.maskers.preserve_format_masker import PreserveFormatMasker
+from maskflow.maskers.redact_masker import RedactMasker
 from maskflow.nlp.factory import build_nlp_pipeline
 from maskflow.nlp.labels import DEFAULT_ENTITY_TYPES
 from maskflow.plugins.builtin import build_builtin_plugin_registry
@@ -16,9 +20,6 @@ from maskflow.runtime.paths import resolve_data_path
 from maskflow.storage.encrypted_mapping import EncryptedMappingStore
 from maskflow.storage.entity_cache import EntityCache
 
-# Modes that have a complete masker implementation. Other MaskingMode values are
-# recognised by the type system but raise NotImplementedError until implemented.
-_IMPLEMENTED_MODES: frozenset[MaskingMode] = frozenset({"hmac"})
 _NLP_ENTITY_RULES: frozenset[str] = frozenset(DEFAULT_ENTITY_TYPES)
 _DEFAULT_NLP_PREFIXES: dict[str, str] = {
     "person": "PERSON",
@@ -91,23 +92,18 @@ def build_engine_bundle_from_config(
 
         runtime_registry.register_detector(detector)
 
-        if rule.mode not in _IMPLEMENTED_MODES:
-            raise NotImplementedError(
-                f"Masking mode '{rule.mode}' is defined but not yet implemented. "
-                f"Currently supported modes: {sorted(_IMPLEMENTED_MODES)}"
-            )
-
         # Derive prefix from config; fall back to the upper-cased rule name so
         # callers do not need to repeat the rule name in every config file.
         effective_prefix = rule.prefix or rule_name.upper()
 
         runtime_registry.register_masker(
             detector_name=rule_name,
-            masker=plugin.masker_factory(
-                config.pipeline.deterministic_secret,
-                effective_prefix,
-                entity_cache,
-                reversible_mapping,
+            masker=_build_masker(
+                mode=rule.mode,
+                secret=config.pipeline.deterministic_secret,
+                prefix=effective_prefix,
+                entity_cache=entity_cache,
+                reversible_mapping=reversible_mapping,
             ),
         )
 
@@ -137,6 +133,27 @@ def build_engine_bundle_from_config(
     )
 
 
+def _build_masker(
+    mode: MaskingMode,
+    secret: str,
+    prefix: str,
+    entity_cache: EntityCache | None,
+    reversible_mapping: EncryptedMappingStore | None,
+) -> BaseMasker:
+    """Фабрика масков: выбирает реализацию по режиму маскирования."""
+    if mode == "hmac":
+        return HmacMasker(secret, prefix, entity_cache, reversible_mapping)
+    if mode == "partial":
+        return PartialMasker(secret, prefix, entity_cache, reversible_mapping)
+    if mode == "preserve_format":
+        return PreserveFormatMasker(secret, prefix, entity_cache, reversible_mapping)
+    if mode == "redact":
+        return RedactMasker(secret, prefix, entity_cache, reversible_mapping)
+    # Эта ветка недостижима при корректной типизации MaskingMode,
+    # но защищает от расширения типа без обновления фабрики.
+    raise NotImplementedError(f"Masking mode '{mode}' is not implemented")  # pragma: no cover
+
+
 def _register_nlp_masker(
     runtime_registry: Registry,
     rule_name: str,
@@ -145,19 +162,14 @@ def _register_nlp_masker(
     entity_cache: EntityCache | None,
     reversible_mapping: EncryptedMappingStore | None,
 ) -> None:
-    if rule.mode not in _IMPLEMENTED_MODES:
-        raise NotImplementedError(
-            f"Masking mode '{rule.mode}' is defined but not yet implemented. "
-            f"Currently supported modes: {sorted(_IMPLEMENTED_MODES)}"
-        )
-
     effective_prefix = rule.prefix or rule_name.upper()
     runtime_registry.register_masker(
         detector_name=rule_name,
-        masker=HmacMasker(
-            secret,
-            effective_prefix,
-            entity_cache,
-            reversible_mapping,
+        masker=_build_masker(
+            mode=rule.mode,
+            secret=secret,
+            prefix=effective_prefix,
+            entity_cache=entity_cache,
+            reversible_mapping=reversible_mapping,
         ),
     )
