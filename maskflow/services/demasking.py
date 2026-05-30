@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -221,15 +222,28 @@ def replace_from_mapping(
     text: str,
     mapping: dict[str, str],
 ) -> tuple[str, int]:
-    result = text
+    """Заменяет все вхождения ключей маппинга их оригинальными значениями.
+
+    Использует единый скомпилированный regex-паттерн вместо цикла `str.replace`,
+    что даёт один проход O(N) по тексту вместо O(N × M).
+
+    Ключи сортируются по убыванию длины, чтобы более длинный ключ имел
+    приоритет над коротким при перекрытии (поведение совпадает с оригиналом).
+    """
+    if not mapping or not text:
+        return text, 0
+
+    # Сортировка по убыванию длины: длинный ключ в паттерне идёт раньше.
+    # re.compile выбирает первую совпавшую альтернативу, поэтому порядок важен.
+    sorted_keys = sorted(mapping, key=len, reverse=True)
+    pattern = re.compile("|".join(re.escape(k) for k in sorted_keys))
+
     replacements = 0
 
-    for masked, original in sorted(mapping.items(), key=lambda item: len(item[0]), reverse=True):
-        count = result.count(masked)
-        if count == 0:
-            continue
+    def _replace(match: re.Match[str]) -> str:
+        nonlocal replacements
+        replacements += 1
+        return mapping[match.group(0)]
 
-        result = result.replace(masked, original)
-        replacements += count
-
+    result = pattern.sub(_replace, text)
     return result, replacements
