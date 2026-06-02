@@ -11,7 +11,7 @@ usage() {
 Usage: ./scripts/bootstrap.sh [options]
 
 Options:
-  --profile base|dev|download|nlp|all   Dependency profile (default: dev)
+  --profile base|dev|download|nlp|qwen|all   Dependency profile (default: dev)
   --extra NAME                          Add an extra dependency group
   --non-interactive                     Use defaults without prompts
   --skip-validation                     Do not run scripts/check.sh
@@ -22,7 +22,8 @@ Profiles:
   dev       dev
   download  download
   nlp       download,nlp
-  all       dev,download,nlp
+  qwen      download,nlp,qwen
+  all       dev,download,nlp,qwen
 USAGE
 }
 
@@ -62,7 +63,8 @@ read_profile_selection() {
   echo "  2) dev       development tools and tests"
   echo "  3) download  model download support"
   echo "  4) nlp       download + NLP providers"
-  echo "  5) all       dev + download + NLP"
+  echo "  5) qwen      download + NLP providers + Qwen"
+  echo "  6) all       dev + download + NLP + Qwen"
   echo
   read -r -p "Profile [2]: " selection
   selection="${selection:-2}"
@@ -72,7 +74,8 @@ read_profile_selection() {
     2|dev) echo "dev" ;;
     3|download) echo "download" ;;
     4|nlp) echo "nlp" ;;
-    5|all) echo "all" ;;
+    5|qwen) echo "qwen" ;;
+    6|all) echo "all" ;;
     *)
       echo "Invalid profile selection: ${selection}" >&2
       exit 1
@@ -114,7 +117,8 @@ case "${PROFILE}" in
   dev) PROFILE_EXTRAS=("dev") ;;
   download) PROFILE_EXTRAS=("download") ;;
   nlp) PROFILE_EXTRAS=("download" "nlp") ;;
-  all) PROFILE_EXTRAS=("dev" "download" "nlp") ;;
+  qwen) PROFILE_EXTRAS=("download" "nlp" "qwen") ;;
+  all) PROFILE_EXTRAS=("dev" "download" "nlp" "qwen") ;;
   *)
     echo "Invalid profile: ${PROFILE}" >&2
     usage

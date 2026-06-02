@@ -25,8 +25,31 @@ Get-Content $envFile | ForEach-Object {
 
 $nlpAutoDownload = $envValues["MASKFLOW_NLP_AUTO_DOWNLOAD"] -match "^(1|true|yes|on)$"
 $extras = $envValues["MASKFLOW_EXTRAS"]
-if ($nlpAutoDownload -and ($extras -notmatch "(^|,)download(,|$)")) {
+
+function Test-ExtraEnabled {
+    param(
+        [string]$ExtrasValue,
+        [string]$Name
+    )
+
+    if (-not $ExtrasValue) {
+        return $false
+    }
+
+    $items = $ExtrasValue.Split(",") | ForEach-Object { $_.Trim() }
+    return $items -contains $Name
+}
+
+if ($nlpAutoDownload -and -not (Test-ExtraEnabled -ExtrasValue $extras -Name "download")) {
     Write-Error "MASKFLOW_NLP_AUTO_DOWNLOAD=true requires MASKFLOW_EXTRAS to include 'download'. Example: MASKFLOW_EXTRAS=download,nlp"
+    exit 1
+}
+
+$defaultConfig = $envValues["MASKFLOW_DEFAULT_CONFIG"]
+$qwenEnabled = $envValues["MASKFLOW_QWEN_ENABLED"] -match "^(1|true|yes|on)$"
+$fullConfigSelected = $defaultConfig -replace "\\", "/" -match "(^|/)configs/examples/full\.yaml$"
+if (($qwenEnabled -or $fullConfigSelected) -and -not (Test-ExtraEnabled -ExtrasValue $extras -Name "qwen")) {
+    Write-Error "Qwen is enabled by env/config but MASKFLOW_EXTRAS does not include 'qwen'. Example: MASKFLOW_EXTRAS=download,nlp,qwen"
     exit 1
 }
 

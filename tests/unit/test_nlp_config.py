@@ -227,3 +227,18 @@ def test_nlp_example_config_loads() -> None:
     assert loaded.nlp.providers.gliner.enabled is True
     assert loaded.rules["person"].enabled is True
     assert loaded.rules["organization"].prefix == "ORG"
+
+
+def test_full_example_config_enables_all_nlp_providers() -> None:
+    loaded = RulesLoader.load(Path("configs/examples/full.yaml"), validate_secret=False)
+
+    assert loaded.nlp.enabled is True
+    assert loaded.nlp.auto_download is True
+    assert loaded.nlp.provider_order == ("gliner", "spacy", "natasha", "qwen")
+    assert loaded.nlp.providers.gliner.enabled is True
+    assert loaded.nlp.providers.spacy.enabled is True
+    assert loaded.nlp.providers.natasha.enabled is True
+    assert loaded.nlp.providers.qwen.enabled is True
+    assert loaded.rules["document_code"].prefix == "CODE"
+    assert loaded.cache.enabled is True
+    assert loaded.reversible_mapping.enabled is True

@@ -52,6 +52,13 @@ nlp = [
     "pymorphy3>=2.0.1",
 ]
 
+qwen = [
+    "transformers>=4.45.0",
+    "accelerate>=0.33.0",
+    "torch>=2.4.0",
+    "sentencepiece>=0.2.0",
+]
+
 [project.scripts]
 maskflow = "maskflow.cli.app:app"
 

@@ -1,0 +1,171 @@
+# Full MaskFlow profile.
+#
+# This config enables all built-in regex/entity detectors, all current NLP
+# providers, model auto-download, cache, and reversible mapping.
+#
+# Runtime requirements:
+# - MASKFLOW_SECRET must be set.
+# - MASKFLOW_REVERSIBLE_KEY must be set when reversible_mapping.enabled=true.
+# - MASKFLOW_EXTRAS should include download,nlp for GLiNER/spaCy/Natasha.
+# - Qwen currently requires transformers-compatible dependencies to be installed.
+# - HF_TOKEN is recommended when downloading Hugging Face models.
+
+pipeline:
+  deterministic_secret: "set-via-MASKFLOW_SECRET"
+
+nlp:
+  enabled: true
+  auto_download: true
+  min_confidence: 0.5
+  provider_order:
+    - gliner
+    - spacy
+    - natasha
+    - qwen
+
+  providers:
+    gliner:
+      enabled: true
+      model_name: "urchade/gliner_multi-v2.1"
+      model_path: "huggingface/urchade__gliner_multi-v2.1"
+      auto_download: null
+      labels:
+        - person
+        - full name
+        - organization
+        - company
+        - bank
+        - legal entity
+        - individual entrepreneur
+        - location
+        - address
+      device: cpu
+      threshold: 0.5
+      batch_size: 16
+
+    spacy:
+      enabled: true
+      model_name: "ru_core_news_lg"
+      model_path: "spacy/ru_core_news_lg"
+      auto_download: null
+      batch_size: 32
+
+    natasha:
+      enabled: true
+
+    qwen:
+      enabled: true
+      model_name: "Qwen/Qwen2.5-Coder-7B-Instruct"
+      model_path: "huggingface/Qwen__Qwen2.5-Coder-7B-Instruct"
+      auto_download: null
+      labels:
+        - person
+        - full name
+        - organization
+        - company
+        - bank
+        - legal entity
+        - individual entrepreneur
+        - location
+        - address
+      device: cpu
+      threshold: 0.6
+      max_context_chars: 4000
+      max_new_tokens: 512
+
+rules:
+  email:
+    enabled: true
+    mode: hmac
+    prefix: EMAIL
+
+  phone:
+    enabled: true
+    mode: hmac
+    prefix: PHONE
+
+  bank_account:
+    enabled: true
+    mode: hmac
+    prefix: ACCOUNT
+
+  bik:
+    enabled: true
+    mode: hmac
+    prefix: BIK
+
+  document_code:
+    enabled: true
+    mode: hmac
+    prefix: CODE
+
+  inn:
+    enabled: true
+    mode: hmac
+    prefix: INN
+
+  guid:
+    enabled: true
+    mode: hmac
+    prefix: GUID
+
+  snils:
+    enabled: true
+    mode: hmac
+    prefix: SNILS
+
+  kpp:
+    enabled: true
+    mode: hmac
+    prefix: KPP
+
+  ogrn:
+    enabled: true
+    mode: hmac
+    prefix: OGRN
+
+  ip_address:
+    enabled: true
+    mode: hmac
+    prefix: IP
+
+  url:
+    enabled: true
+    mode: hmac
+    prefix: URL
+
+  person:
+    enabled: true
+    mode: hmac
+    prefix: PERSON
+
+  organization:
+    enabled: true
+    mode: hmac
+    prefix: ORG
+
+  location:
+    enabled: true
+    mode: hmac
+    prefix: LOC
+
+  address:
+    enabled: true
+    mode: hmac
+    prefix: ADDRESS
+
+field_rules: {}
+
+runtime_limits:
+  regex_timeout_seconds: 5
+  file_timeout_seconds: 300
+  max_workers: 2
+
+cache:
+  enabled: true
+  path: "cache/entity-cache.json"
+
+reversible_mapping:
+  enabled: true
+  path: "reversible/reversible-map.bin"
+  encryption_key_env: "MASKFLOW_REVERSIBLE_KEY"

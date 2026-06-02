@@ -184,7 +184,8 @@ Bootstrap выполняет:
 | dev | dev | разработка, Ruff, MyPy, Pytest |
 | download | download | скачивание моделей из Hugging Face |
 | nlp | download,nlp | GLiNER, spaCy, Natasha |
-| all | dev,download,nlp | полный профиль разработки NLP |
+| qwen | download,nlp,qwen | GLiNER, spaCy, Natasha, Qwen |
+| all | dev,download,nlp,qwen | полный профиль разработки NLP + Qwen |
 
 ## Linux
 
@@ -289,10 +290,16 @@ pip install -e .[download]
 pip install -e .[download,nlp]
 ```
 
+### Установка NLP модулей с Qwen
+
+```bash
+pip install -e .[download,nlp,qwen]
+```
+
 ### Полная установка
 
 ```bash
-pip install -e .[dev,api,download,nlp]
+pip install -e .[dev,api,download,nlp,qwen]
 ```
 
 ---
@@ -354,12 +361,16 @@ MASKFLOW_QWEN_MODEL_PATH=
 MASKFLOW_QWEN_DEVICE=cpu
 ```
 
+Для `configs/examples/full.yaml` или `MASKFLOW_QWEN_ENABLED=true` используйте
+`MASKFLOW_EXTRAS=download,nlp,qwen`.
+
 ENV-переменные перекрывают YAML только когда они реально заданы в окружении.
 Пустые строковые значения вроде `MASKFLOW_GLINER_MODEL_PATH=` игнорируются, чтобы
 Docker Compose мог оставлять путь модели в YAML.
 
 `MASKFLOW_DEFAULT_CONFIG` задает YAML-конфиг для CLI/Web/API. В Docker можно
-использовать конфиг, встроенный в образ, например `configs/examples/nlp.yaml`,
+использовать конфиг, встроенный в образ, например `configs/examples/nlp.yaml`
+или `configs/examples/full.yaml`,
 или файл из подключенного volume, например `/data/configs/my-config.yaml`.
 
 `HF_TOKEN` используется `huggingface_hub` для private/gated моделей и лимитов
@@ -394,6 +405,7 @@ nlp:
 ```bash
 maskflow prepare-models --config configs/default.yaml --provider gliner --auto-download
 maskflow prepare-models --config configs/default.yaml --provider spacy --auto-download
+maskflow prepare-models --config configs/examples/full.yaml --provider qwen --auto-download
 ```
 
 Команда читает только NLP-настройки и не требует production `MASKFLOW_SECRET`.
@@ -404,6 +416,8 @@ maskflow prepare-models --config configs/default.yaml --provider spacy --auto-do
 Для Web-маскирования через Docker нужны три условия:
 
 - образ собран с `MASKFLOW_EXTRAS=download,nlp`;
+- если включен Qwen или выбран `configs/examples/full.yaml`, образ собран с
+  `MASKFLOW_EXTRAS=download,nlp,qwen`;
 - в runtime окружении включены `MASKFLOW_NLP_ENABLED=true` и хотя бы один provider;
 - выбранный `MASKFLOW_DEFAULT_CONFIG` доступен внутри контейнера.
 
@@ -954,6 +968,15 @@ docker build \
   -t maskflow:nlp .
 ```
 
+С NLP и Qwen:
+
+```bash
+docker build \
+  --build-arg MASKFLOW_EXTRAS=download,nlp,qwen \
+  -f docker/Dockerfile \
+  -t maskflow:full .
+```
+
 Для `docker compose` задайте в `.env`, затем пересоберите контейнер:
 
 ```text
@@ -963,6 +986,17 @@ HF_TOKEN=hf_...
 MASKFLOW_NLP_ENABLED=true
 MASKFLOW_NLP_AUTO_DOWNLOAD=true
 MASKFLOW_GLINER_ENABLED=true
+```
+
+Для полного профиля с Qwen:
+
+```text
+MASKFLOW_DEFAULT_CONFIG=configs/examples/full.yaml
+MASKFLOW_EXTRAS=download,nlp,qwen
+HF_TOKEN=hf_...
+MASKFLOW_NLP_ENABLED=true
+MASKFLOW_NLP_AUTO_DOWNLOAD=true
+MASKFLOW_QWEN_ENABLED=true
 ```
 
 Для своего runtime-конфига положите файл в `data/configs`, затем укажите путь
@@ -1225,7 +1259,8 @@ Installation profiles:
 | dev | dev | development, Ruff, MyPy, Pytest |
 | download | download | Hugging Face model downloads |
 | nlp | download,nlp | GLiNER, spaCy, Natasha |
-| all | dev,download,nlp | full NLP development profile |
+| qwen | download,nlp,qwen | GLiNER, spaCy, Natasha, Qwen |
+| all | dev,download,nlp,qwen | full NLP + Qwen development profile |
 
 ## Linux
 
@@ -1330,10 +1365,16 @@ pip install -e .[download]
 pip install -e .[download,nlp]
 ```
 
+### NLP dependencies with Qwen
+
+```bash
+pip install -e .[download,nlp,qwen]
+```
+
 ### Full installation
 
 ```bash
-pip install -e .[dev,api,download,nlp]
+pip install -e .[dev,api,download,nlp,qwen]
 ```
 
 ---
@@ -1395,12 +1436,16 @@ MASKFLOW_QWEN_MODEL_PATH=
 MASKFLOW_QWEN_DEVICE=cpu
 ```
 
+Use `MASKFLOW_EXTRAS=download,nlp,qwen` for `configs/examples/full.yaml` or
+`MASKFLOW_QWEN_ENABLED=true`.
+
 Environment variables override YAML only when they are explicitly present in the
 process environment. Empty string values such as `MASKFLOW_GLINER_MODEL_PATH=`
 are ignored, so Docker Compose can leave model paths controlled by YAML.
 
 `MASKFLOW_DEFAULT_CONFIG` selects the YAML config used by CLI/Web/API. In Docker
-you can use a config baked into the image, such as `configs/examples/nlp.yaml`,
+you can use a config baked into the image, such as `configs/examples/nlp.yaml`
+or `configs/examples/full.yaml`,
 or a file from the mounted volume, such as `/data/configs/my-config.yaml`.
 
 `HF_TOKEN` is used by `huggingface_hub` for private/gated models and Hugging Face
@@ -1447,6 +1492,8 @@ being installed into the container's system Python.
 For Web masking through Docker, three conditions must be true:
 
 - the image is built with `MASKFLOW_EXTRAS=download,nlp`;
+- if Qwen is enabled or `configs/examples/full.yaml` is selected, the image is
+  built with `MASKFLOW_EXTRAS=download,nlp,qwen`;
 - runtime env enables `MASKFLOW_NLP_ENABLED=true` and at least one provider;
 - the selected `MASKFLOW_DEFAULT_CONFIG` exists inside the container.
 
@@ -1714,6 +1761,15 @@ docker build \
   -t maskflow:nlp .
 ```
 
+With NLP and Qwen:
+
+```bash
+docker build \
+  --build-arg MASKFLOW_EXTRAS=download,nlp,qwen \
+  -f docker/Dockerfile \
+  -t maskflow:full .
+```
+
 For `docker compose`, set in `.env`, then rebuild the container:
 
 ```text
@@ -1723,6 +1779,17 @@ HF_TOKEN=hf_...
 MASKFLOW_NLP_ENABLED=true
 MASKFLOW_NLP_AUTO_DOWNLOAD=true
 MASKFLOW_GLINER_ENABLED=true
+```
+
+For the full Qwen profile:
+
+```text
+MASKFLOW_DEFAULT_CONFIG=configs/examples/full.yaml
+MASKFLOW_EXTRAS=download,nlp,qwen
+HF_TOKEN=hf_...
+MASKFLOW_NLP_ENABLED=true
+MASKFLOW_NLP_AUTO_DOWNLOAD=true
+MASKFLOW_QWEN_ENABLED=true
 ```
 
 For a custom runtime config, place the file under `data/configs`, then use the

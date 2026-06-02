@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("base", "dev", "download", "nlp", "all")]
+    [ValidateSet("base", "dev", "download", "nlp", "qwen", "all")]
     [string]$Profile = "",
 
     [string[]]$Extras = @(),
@@ -23,7 +23,8 @@ function Get-ProfileExtras {
         "dev" { return @("dev") }
         "download" { return @("download") }
         "nlp" { return @("download", "nlp") }
-        "all" { return @("dev", "download", "nlp") }
+        "qwen" { return @("download", "nlp", "qwen") }
+        "all" { return @("dev", "download", "nlp", "qwen") }
         default { return @("dev") }
     }
 }
@@ -45,7 +46,8 @@ function Read-ProfileSelection {
     Write-Host "  2) dev       development tools and tests"
     Write-Host "  3) download  model download support"
     Write-Host "  4) nlp       download + NLP providers"
-    Write-Host "  5) all       dev + download + NLP"
+    Write-Host "  5) qwen      download + NLP providers + Qwen"
+    Write-Host "  6) all       dev + download + NLP + Qwen"
     Write-Host ""
 
     $selection = Read-Host "Profile [2]"
@@ -58,11 +60,13 @@ function Read-ProfileSelection {
         "2" { return "dev" }
         "3" { return "download" }
         "4" { return "nlp" }
-        "5" { return "all" }
+        "5" { return "qwen" }
+        "6" { return "all" }
         "base" { return "base" }
         "dev" { return "dev" }
         "download" { return "download" }
         "nlp" { return "nlp" }
+        "qwen" { return "qwen" }
         "all" { return "all" }
         default {
             Write-Error "Invalid profile selection: $selection"
