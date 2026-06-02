@@ -1,5 +1,6 @@
 from maskflow.detectors.bank_account import BankAccountDetector
 from maskflow.detectors.bik import BikDetector
+from maskflow.detectors.document_code import DocumentCodeDetector
 from maskflow.detectors.email import EmailDetector
 from maskflow.detectors.guid import GuidDetector
 from maskflow.detectors.inn import InnDetector
@@ -52,6 +53,36 @@ def test_bik_detector_finds_9_digit_bik_starting_with_zero() -> None:
     assert len(matches) == 1
     assert matches[0].detector == "bik"
     assert matches[0].value == "046577964"
+
+
+def test_document_code_detector_finds_alphanumeric_code_value() -> None:
+    detector = DocumentCodeDetector()
+
+    matches = list(detector.detect("Код=ЗК2603ИП260208340004"))
+
+    assert len(matches) == 1
+    assert matches[0].detector == "document_code"
+    assert matches[0].value == "ЗК2603ИП260208340004"
+
+
+def test_document_code_detector_finds_number_marker_value() -> None:
+    detector = DocumentCodeDetector()
+
+    matches = list(detector.detect("Договор №ABCORG0006 от 01.02.2026"))
+
+    assert len(matches) == 1
+    assert matches[0].detector == "document_code"
+    assert matches[0].value == "ABCORG0006"
+
+
+def test_document_code_detector_ignores_plain_numeric_identifiers() -> None:
+    detector = DocumentCodeDetector()
+
+    matches = list(
+        detector.detect("Код=046577964 ИНН=7707083893 Счет=40802810538320000272"),
+    )
+
+    assert matches == []
 
 
 def test_inn_detector_finds_10_digit_inn() -> None:

@@ -57,6 +57,42 @@ class FakeGlinerClass:
         return FakeGlinerModel()
 
 
+class FakeBusinessLabelGlinerModel:
+    def predict_entities(
+        self,
+        text: str,
+        labels: list[str],
+        threshold: float,
+    ) -> list[dict[str, object]]:
+        assert labels == ["full name", "bank"]
+        assert threshold == 0.5
+        return [
+            {
+                "start": text.index("Иван Петров"),
+                "end": text.index("Иван Петров") + len("Иван Петров"),
+                "label": "full name",
+                "score": 0.91,
+            },
+            {
+                "start": text.index("Банк Ромашка"),
+                "end": text.index("Банк Ромашка") + len("Банк Ромашка"),
+                "label": "bank",
+                "score": 0.88,
+            },
+        ]
+
+
+class FakeBusinessLabelGlinerClass:
+    @classmethod
+    def from_pretrained(
+        cls,
+        _model_path: str,
+        model_dir: str | None = None,
+        local_files_only: bool = False,
+    ) -> FakeBusinessLabelGlinerModel:
+        return FakeBusinessLabelGlinerModel()
+
+
 class FakeLegacyGlinerClass:
     loaded_path: str | None = None
     loaded_local_files_only: bool | None = None
@@ -104,6 +140,35 @@ def test_gliner_provider_converts_entities_to_candidates(
     ]
     assert candidates[0].value == "Иван Петров"
     assert candidates[0].confidence == 0.91
+
+
+def test_gliner_provider_normalizes_business_labels(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    fake_module = SimpleNamespace(GLiNER=FakeBusinessLabelGlinerClass)
+    monkeypatch.setattr(
+        gliner_provider_module,
+        "import_module",
+        lambda _name: fake_module,
+    )
+
+    provider = GlinerProvider(
+        model_name="example/gliner",
+        model_path=tmp_path / "model",
+        auto_download=False,
+        labels=("full name", "bank"),
+        device="cpu",
+        threshold=0.5,
+        batch_size=8,
+    )
+
+    candidates = list(provider.detect("Клиент Иван Петров обслуживается в Банк Ромашка"))
+
+    assert [candidate.entity_type for candidate in candidates] == [
+        "person",
+        "organization",
+    ]
 
 
 def test_gliner_provider_supports_legacy_local_path_loading(

@@ -30,7 +30,12 @@ nlp:
       auto_download: null
       labels:
         - person
+        - full name
         - organization
+        - company
+        - bank
+        - legal entity
+        - individual entrepreneur
         - location
         - address
       device: cpu
@@ -54,7 +59,12 @@ nlp:
       auto_download: null
       labels:
         - person
+        - full name
         - organization
+        - company
+        - bank
+        - legal entity
+        - individual entrepreneur
         - location
         - address
       device: cpu
@@ -79,6 +89,11 @@ rules:
     prefix: ""
 
   bik:
+    enabled: true
+    mode: partial
+    prefix: ""
+
+  document_code:
     enabled: true
     mode: partial
     prefix: ""

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from maskflow.nlp.labels import DEFAULT_DETECTION_LABELS
 from maskflow.rules.loader import RulesLoader
 
 
@@ -27,23 +28,13 @@ rules:
     assert loaded.nlp.auto_download is False
     assert loaded.nlp.provider_order == ("gliner", "spacy", "natasha", "qwen")
     assert loaded.nlp.providers.gliner.model_name == "urchade/gliner_multi-v2.1"
-    assert loaded.nlp.providers.gliner.labels == (
-        "person",
-        "organization",
-        "location",
-        "address",
-    )
+    assert loaded.nlp.providers.gliner.labels == DEFAULT_DETECTION_LABELS
     assert loaded.nlp.providers.gliner.enabled is False
     assert loaded.nlp.providers.spacy.model_name == "ru_core_news_lg"
     assert loaded.nlp.providers.spacy.enabled is False
     assert loaded.nlp.providers.natasha.enabled is False
     assert loaded.nlp.providers.qwen.model_name == "Qwen/Qwen2.5-Coder-7B-Instruct"
-    assert loaded.nlp.providers.qwen.labels == (
-        "person",
-        "organization",
-        "location",
-        "address",
-    )
+    assert loaded.nlp.providers.qwen.labels == DEFAULT_DETECTION_LABELS
     assert loaded.nlp.providers.qwen.max_new_tokens == 512
     assert loaded.nlp.providers.qwen.enabled is False
 

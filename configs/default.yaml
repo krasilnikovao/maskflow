@@ -35,7 +35,12 @@ nlp:
       # Список entity labels, которые GLiNER должен искать в тексте.
       labels:
         - person
+        - full name
         - organization
+        - company
+        - bank
+        - legal entity
+        - individual entrepreneur
         - location
         - address
       # Устройство инференса: cpu, cuda, cuda:0 и т.п.
@@ -74,7 +79,12 @@ nlp:
       # Список entity labels, которые optional verifier должен подтверждать.
       labels:
         - person
+        - full name
         - organization
+        - company
+        - bank
+        - legal entity
+        - individual entrepreneur
         - location
         - address
       # Устройство инференса: cpu, cuda, cuda:0 и т.п.
@@ -108,6 +118,11 @@ rules:
     enabled: true
     mode: hmac
     prefix: BIK
+
+  document_code:
+    enabled: true
+    mode: hmac
+    prefix: CODE
 
   inn:
     enabled: true

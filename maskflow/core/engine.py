@@ -10,6 +10,7 @@ logger = get_logger("maskflow.engine")
 
 _DETECTOR_PRIORITIES: dict[str, int] = {
     "bank_account": 100,
+    "document_code": 96,
     "inn": 95,
     "bik": 94,
     "kpp": 90,

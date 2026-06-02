@@ -18,7 +18,12 @@ nlp:
       auto_download: null
       labels:
         - person
+        - full name
         - organization
+        - company
+        - bank
+        - legal entity
+        - individual entrepreneur
         - location
         - address
       device: cpu
@@ -42,7 +47,12 @@ nlp:
       auto_download: null
       labels:
         - person
+        - full name
         - organization
+        - company
+        - bank
+        - legal entity
+        - individual entrepreneur
         - location
         - address
       device: cpu
@@ -70,6 +80,11 @@ rules:
     enabled: true
     mode: hmac
     prefix: BIK
+
+  document_code:
+    enabled: true
+    mode: hmac
+    prefix: CODE
 
   inn:
     enabled: true

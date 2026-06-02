@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from maskflow.nlp.labels import DEFAULT_ENTITY_TYPES
+from maskflow.nlp.labels import DEFAULT_DETECTION_LABELS
 
 _StrictModel = ConfigDict(extra="forbid")
 
@@ -28,7 +28,7 @@ class GlinerProviderConfig(BaseModel):
     model_path: str | None = None
     # None means inherit nlp.auto_download.
     auto_download: bool | None = None
-    labels: tuple[str, ...] = DEFAULT_ENTITY_TYPES
+    labels: tuple[str, ...] = DEFAULT_DETECTION_LABELS
     device: str = "cpu"
     threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     batch_size: int = Field(default=16, gt=0, le=256)
@@ -60,7 +60,7 @@ class QwenProviderConfig(BaseModel):
     model_path: str | None = None
     # None means inherit nlp.auto_download.
     auto_download: bool | None = None
-    labels: tuple[str, ...] = DEFAULT_ENTITY_TYPES
+    labels: tuple[str, ...] = DEFAULT_DETECTION_LABELS
     device: str = "cpu"
     threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     max_context_chars: int = Field(default=4000, gt=0, le=64000)

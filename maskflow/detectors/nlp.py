@@ -15,7 +15,7 @@ class NlpEntityDetector(BaseDetector):
 
     def detect(self, text: str) -> Iterable[Match]:
         for entity in self.pipeline.detect(text):
-            if not _is_safe_nlp_span(entity.value):
+            if not _is_safe_nlp_span(text, entity.start, entity.end, entity.value):
                 continue
 
             yield Match(
@@ -26,11 +26,24 @@ class NlpEntityDetector(BaseDetector):
             )
 
 
-def _is_safe_nlp_span(value: str) -> bool:
+def _is_safe_nlp_span(text: str, start: int, end: int, value: str) -> bool:
     if not value or len(value) > 160:
         return False
 
     if "\n" in value or "\r" in value or "=" in value:
         return False
 
+    if start < 0 or end > len(text) or end <= start:
+        return False
+
+    if start > 0 and _is_identifier_char(text[start - 1]):
+        return False
+
+    if end < len(text) and _is_identifier_char(text[end]):
+        return False
+
     return True
+
+
+def _is_identifier_char(char: str) -> bool:
+    return char == "_" or char.isalnum()

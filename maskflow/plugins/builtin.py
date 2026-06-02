@@ -1,5 +1,6 @@
 from maskflow.detectors.bank_account import BankAccountDetector
 from maskflow.detectors.bik import BikDetector
+from maskflow.detectors.document_code import DocumentCodeDetector
 from maskflow.detectors.email import EmailDetector
 from maskflow.detectors.guid import GuidDetector
 from maskflow.detectors.inn import InnDetector
@@ -37,6 +38,14 @@ def build_builtin_plugin_registry() -> PluginRegistry:
         PluginSpec(
             name="bik",
             detector=BikDetector(),
+            masker_factory=HmacMasker,
+        ),
+    )
+
+    registry.register(
+        PluginSpec(
+            name="document_code",
+            detector=DocumentCodeDetector(),
             masker_factory=HmacMasker,
         ),
     )

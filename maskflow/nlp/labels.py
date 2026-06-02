@@ -12,6 +12,18 @@ DEFAULT_ENTITY_TYPES: tuple[str, ...] = (
     ADDRESS,
 )
 
+DEFAULT_DETECTION_LABELS: tuple[str, ...] = (
+    PERSON,
+    "full name",
+    ORGANIZATION,
+    "company",
+    "bank",
+    "legal entity",
+    "individual entrepreneur",
+    LOCATION,
+    ADDRESS,
+)
+
 PROVIDER_PRIORITIES: dict[str, int] = {
     "spacy": 30,
     "natasha": 20,
@@ -22,8 +34,15 @@ PROVIDER_PRIORITIES: dict[str, int] = {
 LABEL_ALIASES: dict[str, str] = {
     "PER": PERSON,
     "PERSON": PERSON,
+    "FULL_NAME": PERSON,
+    "NAME": PERSON,
     "ORG": ORGANIZATION,
     "ORGANIZATION": ORGANIZATION,
+    "COMPANY": ORGANIZATION,
+    "BANK": ORGANIZATION,
+    "BANK_BRANCH": ORGANIZATION,
+    "LEGAL_ENTITY": ORGANIZATION,
+    "INDIVIDUAL_ENTREPRENEUR": ORGANIZATION,
     "LOC": LOCATION,
     "LOCATION": LOCATION,
     "GPE": LOCATION,
