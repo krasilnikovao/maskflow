@@ -1,7 +1,15 @@
-# Пример: формат-сохраняющая маскировка (preserve_format).
-# Цифры заменяются цифрами, буквы — буквами, разделители сохраняются.
-# Длина и структура значений не изменяются.
-# Файл переименован в preserve_format.yaml; этот сохранён для обратной совместимости.
+# Пример: частичная маска (partial mode).
+#
+# Поведение:
+#   - Email:   ex***@mail.ru  (показывает первые 2 символа локальной части + домен)
+#   - Прочее:  ab***xy        (показывает первые 2 и последние 2 символа)
+#
+# Используется когда нужно скрыть данные, но сохранить читаемость —
+# например, в аналитических отчётах или тестовых выгрузках.
+#
+# Не требует reversible_mapping — демаскирование невозможно и не нужно.
+# Не требует entity_cache — partial не является детерминированным токеном.
+
 pipeline:
   deterministic_secret: "set-via-MASKFLOW_SECRET"
 
@@ -57,65 +65,65 @@ nlp:
 rules:
   email:
     enabled: true
-    mode: preserve_format
-    prefix: EMAIL
+    mode: partial
+    prefix: ""  # prefix не используется в partial mode
 
   phone:
     enabled: true
-    mode: preserve_format
-    prefix: PHONE
+    mode: partial
+    prefix: ""
 
   bank_account:
     enabled: true
-    mode: preserve_format
-    prefix: ACCOUNT
+    mode: partial
+    prefix: ""
 
   bik:
     enabled: true
-    mode: preserve_format
-    prefix: BIK
+    mode: partial
+    prefix: ""
 
   inn:
     enabled: true
-    mode: preserve_format
-    prefix: INN
+    mode: partial
+    prefix: ""
 
   guid:
     enabled: true
-    mode: preserve_format
-    prefix: GUID
+    mode: partial
+    prefix: ""
 
   snils:
     enabled: true
-    mode: preserve_format
-    prefix: SNILS
+    mode: partial
+    prefix: ""
 
   kpp:
     enabled: true
-    mode: preserve_format
-    prefix: KPP
+    mode: partial
+    prefix: ""
 
   ogrn:
     enabled: true
-    mode: preserve_format
-    prefix: OGRN
+    mode: partial
+    prefix: ""
 
   ip_address:
     enabled: true
-    mode: preserve_format
-    prefix: IP
+    mode: partial
+    prefix: ""
 
   url:
     enabled: true
-    mode: preserve_format
-    prefix: URL
+    mode: partial
+    prefix: ""
 
 field_rules: {}
 
 runtime_limits:
   regex_timeout_seconds: 5
   file_timeout_seconds: 300
-  max_workers: 1
+  max_workers: 4
 
 cache:
   enabled: false

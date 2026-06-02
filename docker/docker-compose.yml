@@ -7,10 +7,20 @@ services:
       dockerfile: docker/Dockerfile
       args:
         MASKFLOW_EXTRAS: ${MASKFLOW_EXTRAS:-}
+        # Pass proxy settings from host .env to Docker build layer.
+        # Set these in .env if Docker containers can't reach pypi.org directly.
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
     env_file:
       - ../.env
     environment:
       MASKFLOW_DATA_DIR: /data
+    # Explicit DNS resolvers prevent Docker Desktop DNS failures on Windows
+    # where the default bridge network may lose resolution under load.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - ../data:/data
     ports:

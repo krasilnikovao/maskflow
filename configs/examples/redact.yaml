@@ -1,7 +1,17 @@
-# Пример: формат-сохраняющая маскировка (preserve_format).
-# Цифры заменяются цифрами, буквы — буквами, разделители сохраняются.
-# Длина и структура значений не изменяются.
-# Файл переименован в preserve_format.yaml; этот сохранён для обратной совместимости.
+# Пример: полное замещение (redact mode).
+#
+# Поведение:
+#   - Значение полностью заменяется фиксированным токеном: EMAIL_REDACTED
+#   - Если prefix не задан — используется [REDACTED]
+#   - Быстрый, простой и необратимый режим
+#   - Не требует секрета, кэша или reversible_mapping
+#
+# Используется для:
+#   - логов и дампов, где исходное значение не нужно даже частично;
+#   - аудита и compliance — данные должны быть полностью скрыты;
+#   - передачи данных внешним подрядчикам с минимальным доверием;
+#   - случаев, когда структура значения не важна.
+
 pipeline:
   deterministic_secret: "set-via-MASKFLOW_SECRET"
 
@@ -57,57 +67,57 @@ nlp:
 rules:
   email:
     enabled: true
-    mode: preserve_format
-    prefix: EMAIL
+    mode: redact
+    prefix: EMAIL     # результат: EMAIL_REDACTED
 
   phone:
     enabled: true
-    mode: preserve_format
-    prefix: PHONE
+    mode: redact
+    prefix: PHONE     # результат: PHONE_REDACTED
 
   bank_account:
     enabled: true
-    mode: preserve_format
+    mode: redact
     prefix: ACCOUNT
 
   bik:
     enabled: true
-    mode: preserve_format
+    mode: redact
     prefix: BIK
 
   inn:
     enabled: true
-    mode: preserve_format
+    mode: redact
     prefix: INN
 
   guid:
     enabled: true
-    mode: preserve_format
-    prefix: GUID
+    mode: redact
+    prefix: ""        # результат: [REDACTED]
 
   snils:
     enabled: true
-    mode: preserve_format
+    mode: redact
     prefix: SNILS
 
   kpp:
     enabled: true
-    mode: preserve_format
+    mode: redact
     prefix: KPP
 
   ogrn:
     enabled: true
-    mode: preserve_format
+    mode: redact
     prefix: OGRN
 
   ip_address:
     enabled: true
-    mode: preserve_format
+    mode: redact
     prefix: IP
 
   url:
     enabled: true
-    mode: preserve_format
+    mode: redact
     prefix: URL
 
 field_rules: {}
@@ -115,13 +125,15 @@ field_rules: {}
 runtime_limits:
   regex_timeout_seconds: 5
   file_timeout_seconds: 300
-  max_workers: 1
+  max_workers: 4
 
 cache:
+  # redact mode не требует кэша — токен всегда одинаков для любого значения.
   enabled: false
   path: "cache/entity-cache.json"
 
 reversible_mapping:
+  # redact необратим по определению.
   enabled: false
   path: "reversible/reversible-map.bin"
   encryption_key_env: "MASKFLOW_REVERSIBLE_KEY"

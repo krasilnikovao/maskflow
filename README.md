@@ -66,21 +66,23 @@ MaskFlow не использует облачные сервисы, внешни
 
 ## Режимы маскирования
 
-- полное обезличивание;
-- псевдонимизация;
-- частичное маскирование;
-- детерминированное HMAC-маскирование;
-- сохранение формата значений.
+| Режим | Описание | Пример |
+|---|---|---|
+| `hmac` | Детерминированная HMAC-псевдонимизация | `EMAIL_92af8b1c` |
+| `partial` | Частичная маска, сохраняет начало/домен | `ex***@mail.ru` |
+| `preserve_format` | Формат-сохраняющая замена (цифра→цифра, буква→буква) | `7707083893 → 3841259607` |
+| `redact` | Полное замещение фиксированным токеном | `EMAIL_REDACTED` |
 
 ## Архитектурные особенности
 
 - потоковый процессинг;
 - параллельная обработка;
 - модульная архитектура;
-- система плагинов;
-- безопасные regex;
+- система плагинов с верификацией SHA-256;
+- безопасные regex с таймаутами;
 - поддержка юникода и кириллицы;
-- поддержка UTF-8 и Windows-1251.
+- поддержка UTF-8 и Windows-1251;
+- умная обработка LOG-файлов (сохранение timestamps, levels, stack traces).
 
 ---
 
@@ -472,12 +474,12 @@ enabled: true
 
 Поддерживаемые режимы:
 
-| Mode | Описание |
-|---|---|
-| hmac | Детерминированная HMAC-псевдонимизация |
-| random | Случайная замена |
-| static | Статическое значение |
-| partial | Частичная маска |
+| Mode | Описание | Пример результата |
+|---|---|---|
+| `hmac` | Детерминированная HMAC-псевдонимизация. Одно значение всегда → один токен. Требует `deterministic_secret`. | `EMAIL_92af8b1c` |
+| `partial` | Частичная маска: email сохраняет домен, остальное — крайние символы. | `ex***@mail.ru` |
+| `preserve_format` | Цифра→цифра, буква→буква, разделители без изменений. Длина сохраняется. | `+7 (412) 853-91-24` |
+| `redact` | Полное замещение. Быстро и необратимо. | `EMAIL_REDACTED` |
 
 ### prefix
 
@@ -496,10 +498,75 @@ PHONE_9ab811cc
 
 ```yaml
 rules:
-  email:
-  phone:
-  inn:
-  guid:
+  email:      # адреса электронной почты
+  phone:      # российские телефоны (+7, 8)
+  inn:        # ИНН 10/12 цифр с контрольной суммой
+  kpp:        # КПП
+  ogrn:       # ОГРН/ОГРНИП
+  snils:      # СНИЛС
+  bank_account: # расчётные счета (20 цифр)
+  bik:        # БИК банка
+  guid:       # UUID/GUID
+  ip_address: # IPv4-адреса
+  url:        # URL
+```
+
+---
+
+# Обработка LOG-файлов
+
+LOG-процессор (`.log`) обрабатывает файлы построчно и защищает структурные элементы:
+
+- **Stack traces** (`at com.example...`, `File "path.py"`, `Caused by:`) — строка сохраняется целиком, PII там не бывает;
+- **Префикс строки** (timestamp + level + имя логгера) — не маскируется;
+- **Message-часть** — маскируется детекторами.
+
+Поддерживаемые форматы:
+
+| Формат | Пример |
+|---|---|
+| ISO / Python / Java | `2024-01-15 10:23:45,123 INFO root - message` |
+| ISO T / structlog | `2024-01-15T10:23:45.123Z [ERROR] message` |
+| Apache / nginx | `[15/Jan/2024:10:23:45 +0000] "GET /path" 200` |
+| 1С техжурнал | `{10:23:45.123-0,PROC,5}event=Connect,...` |
+
+Пример маскировки:
+
+```text
+# Вход
+2024-01-15 10:23:45,123 ERROR app - failed for user@example.com
+    at com.example.Service.call(Service.java:42)
+
+# Выход
+2024-01-15 10:23:45,123 ERROR app - failed for EMAIL_92af8b1c
+    at com.example.Service.call(Service.java:42)
+```
+
+`.txt`-файлы по-прежнему обрабатываются через потоковый `TextProcessor` без учёта структуры.
+
+---
+
+# Безопасность плагинов
+
+При загрузке внешних плагинов без верификации SHA-256 в лог выводится предупреждение:
+
+```text
+[warning] external_plugins_no_hash_verification
+  note='trusted_hashes not provided — plugin integrity is NOT verified.'
+```
+
+Для production рекомендуется передавать список разрешённых хэшей:
+
+```bash
+maskflow mask input.txt output.txt --plugins-dir ./plugins
+# В Python API:
+load_external_plugins(registry, plugins_dir, trusted_hashes={"sha256hex..."})
+```
+
+Вычислить хэш плагина:
+
+```bash
+sha256sum plugins/my_plugin.py
 ```
 
 ---
@@ -733,13 +800,65 @@ Email: EMAIL_92af8b1c
 }
 ```
 
-### Выход
+### Выход (mode: hmac)
 
 ```json
 {
   "email": "EMAIL_92af8b1c",
   "phone": "PHONE_7bc331a1"
 }
+```
+
+---
+
+## Режим partial
+
+### Вход
+
+```text
+Email: admin@example.com
+Телефон: +79991234567
+```
+
+### Выход
+
+```text
+Email: ad***@example.com
+Телефон: +7***4567
+```
+
+---
+
+## Режим preserve_format
+
+### Вход
+
+```text
+ИНН: 7707083893
+Телефон: +7 (999) 123-45-67
+```
+
+### Выход (длина и формат сохранены)
+
+```text
+ИНН: 3841259607
+Телефон: +7 (412) 853-91-24
+```
+
+---
+
+## Режим redact
+
+### Вход
+
+```text
+Email: admin@example.com
+```
+
+### Выход
+
+```text
+Email: EMAIL_REDACTED
 ```
 
 ---
@@ -928,7 +1047,17 @@ pytest
 
 # Roadmap
 
-Планируемые возможности:
+## Реализовано
+
+- ✅ Режим `partial` — частичная маска;
+- ✅ Режим `preserve_format` — формат-сохраняющая замена;
+- ✅ Режим `redact` — полное замещение;
+- ✅ LOG-процессор с защитой структурных элементов;
+- ✅ Верификация плагинов по SHA-256;
+- ✅ Оптимизация демаскирования (O(N) вместо O(N×M));
+- ✅ Hard limit для JSON >100 MB.
+
+## Планируется
 
 - REST API;
 - streaming SQL parser;
@@ -1013,11 +1142,12 @@ MaskFlow never sends data to external APIs or cloud services.
 
 ## Masking Modes
 
-- Full anonymization;
-- Pseudonymization;
-- Partial masking;
-- Deterministic HMAC masking;
-- Format-preserving masking.
+| Mode | Description | Example |
+|---|---|---|
+| `hmac` | Deterministic HMAC pseudonymization | `EMAIL_92af8b1c` |
+| `partial` | Partial mask, preserves domain/suffix | `ex***@mail.ru` |
+| `preserve_format` | Format-preserving replacement (digit→digit, letter→letter) | `7707083893 → 3841259607` |
+| `redact` | Full replacement with a fixed token | `EMAIL_REDACTED` |
 
 ---
 
@@ -1369,12 +1499,12 @@ Enables or disables the rule.
 
 Supported values:
 
-| Mode | Description |
-|---|---|
-| hmac | Deterministic HMAC pseudonymization |
-| random | Random replacement |
-| static | Static replacement |
-| partial | Partial masking |
+| Mode | Description | Example output |
+|---|---|---|
+| `hmac` | Deterministic HMAC pseudonymization. Same input always produces same token. Requires `deterministic_secret`. | `EMAIL_92af8b1c` |
+| `partial` | Partial mask: email preserves domain, others keep leading/trailing chars. | `ex***@mail.ru` |
+| `preserve_format` | Digit→digit, letter→letter, separators unchanged. Length is preserved. | `+7 (412) 853-91-24` |
+| `redact` | Full replacement. Fast and irreversible. | `EMAIL_REDACTED` |
 
 ### prefix
 
@@ -1674,7 +1804,17 @@ Avoid:
 
 # Roadmap
 
-Planned features:
+## Completed
+
+- ✅ `partial` masking mode;
+- ✅ `preserve_format` masking mode;
+- ✅ `redact` masking mode;
+- ✅ LOG processor with structural element protection;
+- ✅ Plugin SHA-256 hash verification warning;
+- ✅ Demasking performance: O(N) single-pass via regex alternation;
+- ✅ Hard limit for JSON files >100 MB.
+
+## Planned
 
 - REST API;
 - streaming SQL parser;

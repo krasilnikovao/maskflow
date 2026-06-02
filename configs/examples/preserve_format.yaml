@@ -1,0 +1,143 @@
+# Пример: формат-сохраняющая маскировка (preserve_format mode).
+#
+# Поведение:
+#   - Цифра заменяется цифрой:       7707083893  →  3841259607
+#   - Буква заменяется буквой (регистр сохраняется): AbCd → XkPq
+#   - Кириллица заменяется кириллицей
+#   - Разделители, пробелы, скобки — без изменений
+#   - Длина значения сохраняется
+#   - Замена детерминирована: одно значение + один secret → всегда один результат
+#
+# Используется для:
+#   - сохранения читаемости структуры данных при анализе;
+#   - тестовых сред, где нужна правдоподобная структура значений;
+#   - форматов, где токены типа EMAIL_xxx нежелательны.
+#
+# Требует deterministic_secret — без него замена необратима, но не воспроизводима.
+
+pipeline:
+  deterministic_secret: "set-via-MASKFLOW_SECRET"
+
+nlp:
+  enabled: false
+  auto_download: false
+  min_confidence: 0.5
+  provider_order:
+    - gliner
+    - spacy
+    - natasha
+    - qwen
+  providers:
+    gliner:
+      enabled: false
+      model_name: "urchade/gliner_multi-v2.1"
+      model_path: null
+      auto_download: null
+      labels:
+        - person
+        - organization
+        - location
+        - address
+      device: cpu
+      threshold: 0.5
+      batch_size: 16
+
+    spacy:
+      enabled: false
+      model_name: "ru_core_news_lg"
+      model_path: null
+      auto_download: null
+      batch_size: 32
+
+    natasha:
+      enabled: false
+
+    qwen:
+      enabled: false
+      model_name: "Qwen/Qwen2.5-Coder-7B-Instruct"
+      model_path: null
+      auto_download: null
+      labels:
+        - person
+        - organization
+        - location
+        - address
+      device: cpu
+      threshold: 0.5
+      max_context_chars: 4000
+      max_new_tokens: 512
+
+rules:
+  email:
+    enabled: true
+    mode: preserve_format
+    prefix: ""  # prefix не используется: вывод должен выглядеть как оригинал
+
+  phone:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  bank_account:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  bik:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  inn:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  guid:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  snils:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  kpp:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  ogrn:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  ip_address:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+  url:
+    enabled: true
+    mode: preserve_format
+    prefix: ""
+
+field_rules: {}
+
+runtime_limits:
+  regex_timeout_seconds: 5
+  file_timeout_seconds: 300
+  max_workers: 4
+
+cache:
+  # Cache полезен для preserve_format: одно значение всегда даёт один результат,
+  # поэтому повторные обработки одного и того же значения не пересчитывают HMAC.
+  enabled: true
+  path: "cache/entity-cache.json"
+
+reversible_mapping:
+  # preserve_format необратим — reversible_mapping не поддерживается для этого режима.
+  enabled: false
+  path: "reversible/reversible-map.bin"
+  encryption_key_env: "MASKFLOW_REVERSIBLE_KEY"
